@@ -534,7 +534,7 @@ def build_world() -> list[Frame]:
 def build_font() -> list[Frame]:
     chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.:-> "
     return [
-        ("font_SP" if char == " " else f"font_{char}", font_frame(char), [0, 9], None)
+        ("font_SP" if char == " " else f"font_{char}", font_frame(char), [4, 9], None)
         for char in chars
     ]
 
