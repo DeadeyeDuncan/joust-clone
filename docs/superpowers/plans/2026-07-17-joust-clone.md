@@ -12,8 +12,8 @@
 
 - Python 3.13 venv at `G:/Joust/.venv`; deps preinstalled by orchestrator (sandbox has NO network — never `pip install`).
 - Workers NEVER run git (sandbox denies by design). Final step of each task = report; orchestrator verifies and commits.
-- Test runner inside sandbox (forward slashes, `pytest.exe` never `python -m pytest`):
-  `powershell -NoProfile -Command "$env:TEMP='G:/Joust/.pytest-sandbox-tmp/env'; $env:TMP=$env:TEMP; G:/Joust/.venv/Scripts/pytest.exe <files> -q --basetemp='G:/Joust/.pytest-sandbox-tmp/bt'"`
+- Test runner inside sandbox (forward slashes, `pytest.exe` never `python -m pytest`). Both temp dirs are PRE-CREATED by the orchestrator (Task 0) — do not create or delete them. The dispatcher is itself PowerShell, so `$env:` must be escaped (backtick) or sent via `--%` so the INNER shell expands it:
+  `powershell -NoProfile -Command "`$env:TEMP='G:/Joust/.pytest-sandbox-tmp/env'; `$env:TMP=`$env:TEMP; G:/Joust/.venv/Scripts/pytest.exe <files> -q --basetemp='G:/Joust/.pytest-sandbox-tmp/bt'"`
 - All tests must run headless: `tests/conftest.py` (Task 1) sets `SDL_VIDEODRIVER=dummy` before any pygame import.
 - Logical playfield 640×360, y-down. 60 Hz fixed `DT = 1/60`. All tuning constants live in `joust/config.py` only — no magic numbers in entity/logic modules.
 - Generated assets are gitignored; generators must be deterministic (two runs → byte-identical output).
@@ -27,7 +27,7 @@
 - [ ] `python -m venv G:/Joust/.venv` with Python 3.13; `G:/Joust/.venv/Scripts/pip install pygame-ce pillow numpy pytest`
 - [ ] Verify sandbox RX grant on `C:\Users\auand\AppData\Local\Programs\Python\Python313` still present (`icacls`, look for `CodexSandboxUsers:(OI)(CI)(RX)`)
 - [ ] Create `.gitignore`: `.venv/`, `assets/sprites/*.png`, `assets/sprites/sprites.json`, `assets/sfx/*.wav`, `.pytest-sandbox-tmp/`, `__pycache__/`, `*.pyc`, `dist/`, `build/`
-- [ ] `mkdir` `G:/Joust/.pytest-sandbox-tmp` (as real user, per sandbox recipe); commit scaffold
+- [ ] `mkdir` all three as real user (per sandbox recipe — sandbox-created dirs carry wrong DACLs): `G:/Joust/.pytest-sandbox-tmp`, `G:/Joust/.pytest-sandbox-tmp/env`, `G:/Joust/.pytest-sandbox-tmp/bt`; commit scaffold
 
 ### Task 1: Scaffold, config, fixed-timestep loop
 
@@ -35,7 +35,7 @@
 - Create: `joust/__init__.py`, `joust/__main__.py`, `joust/config.py`, `joust/main.py`, `joust/states.py` (skeleton), `tests/conftest.py`, `tests/test_config.py`, `tests/test_loop.py`
 
 **Interfaces:**
-- Produces: `config.*` constants (exact names below) used by every later task; `main.GameLoop` with `run()`, `step(dt)`; `states.State` base (`handle_event(e)`, `update(dt)`, `draw(surface)`) and `states.StateMachine` (`push/pop/switch`).
+- Produces: `config.*` constants (exact names below) used by every later task; `main.GameLoop` with `run()`, `pump(frame_seconds)`; `states.State` base (`handle_event(e)`, `update(dt)`, `draw(surface)`) and `states.StateMachine` (`push/pop/switch/current`).
 
 - [ ] **Step 1: Write failing tests**
 
@@ -138,6 +138,43 @@ PTERO_SPEED = 140.0
 
 # spawn
 SPAWN_SHIMMER_S = 1.0
+SPAWN_INVULN_S = 3.0     # invulnerability cap; cleared early by first move/flap/AI action
+
+# combat bounce
+BOUNCE_MIN_VX = 60.0
+BOUNCE_NUDGE_VY = -30.0
+
+# enemy AI
+AI_FLAP_COOLDOWN_S = 0.25
+LORD_SPEED_MULT = 1.35
+LORD_CRUISE_ABOVE = 40
+LORD_DIVE_RANGE = 80
+
+# egg rest threshold
+EGG_REST_VY = 20.0
+
+# pterodactyl flight
+PTERO_BOB_AMP = 24.0
+PTERO_BOB_PERIOD_S = 1.6
+PTERO_MOUTH_RANGE = 60
+PTERO_MOUTH_W, PTERO_MOUTH_H = 10, 8
+
+# troll escape
+TROLL_RELEASE_VY = -20.0   # net pull at/below this -> unlatch
+TROLL_ESCAPE_DECAY = 30.0  # px/s^2 decay of escape velocity toward 0
+TROLL_COOLDOWN_S = 1.0     # after an escape, troll cannot re-latch for this long
+
+# entity collision sizes (w, h), rect anchored center-bottom
+MOUNT_W, MOUNT_H = 40, 32
+EGG_W, EGG_H = 12, 14
+HATCHLING_W, HATCHLING_H = 14, 22
+PTERO_W, PTERO_H = 56, 36
+
+# input
+PAD_DEADZONE = 0.3
+
+# audio
+MIXER_CHANNELS = 8
 ```
 
 `joust/main.py` core:
@@ -165,7 +202,7 @@ class GameLoop:
             self.pump(clock.tick(config.FPS) / 1000.0)
 ```
 
-`joust/states.py` skeleton: `State` with no-op `handle_event/update/draw`; `StateMachine` holding a stack with `push/pop/switch/current`. `joust/__main__.py`: `from joust.main import main; main()` where `main()` creates window `LOGICAL_W*SCALE × LOGICAL_H*SCALE`, a logical surface, scales with `pygame.transform.scale_by(..., SCALE)` nearest-neighbor, runs loop with an `AttractState` placeholder that draws a filled background and quits on `pygame.QUIT`/Esc.
+`joust/states.py` skeleton: `State` with no-op `handle_event/update/draw`; `StateMachine` holding a stack with `push/pop/switch/current`. `joust/__main__.py`: `from joust.main import main; main()` where `main()` creates window `LOGICAL_W*config.SCALE_DEFAULT × LOGICAL_H*config.SCALE_DEFAULT`, a logical surface, scales with `pygame.transform.scale_by(surf, config.SCALE_DEFAULT)` nearest-neighbor, runs loop with an `AttractState` placeholder that draws a filled background and quits on `pygame.QUIT`/Esc.
 
 - [ ] **Step 4: Run tests — expected all PASS**
 - [ ] **Step 5: Report** — STATUS, files, test output verbatim. Orchestrator: verify + commit `feat: scaffold config and fixed-timestep loop`.
@@ -216,12 +253,16 @@ def run_gen():
 def test_generator_emits_complete_manifest(tmp_path):
     run_gen()
     m = json.loads((OUT / "sprites.json").read_text())
+    from PIL import Image
+    sizes = {s: Image.open(OUT / p).size for s, p in m["sheets"].items()}
     for name in REQUIRED:
         assert name in m["frames"], f"missing frame {name}"
         f = m["frames"][name]
         assert (OUT / m["sheets"][f["sheet"]]).exists()
         x, y, w, h = f["rect"]
         assert w > 0 and h > 0
+        sw, sh = sizes[f["sheet"]]
+        assert x >= 0 and y >= 0 and x + w <= sw and y + h <= sh, f"{name} rect out of sheet bounds"
     for p in (1, 2):
         assert m["frames"][f"p{p}_stand"]["lance"] is not None
     assert m["frames"]["egg_0"]["lance"] is None
@@ -279,7 +320,7 @@ def test_all_sfx_exist_valid_and_deterministic():
 - Create: `joust/world.py`, `tests/test_world.py`
 
 **Interfaces:**
-- Produces: `World(wave=1)` with: `platforms -> list[Platform]` (`Platform(x, y, w, id, alive=True)`, y = top surface); `spawn_pads -> list[tuple[x, y]]` (4 pads); `apply_erosion(wave)`; `wrap_x(x) -> float`; `ground_under(x, y, vy) -> Platform | None` (landing check: falling, feet within platform span, crossing top); `LAVA_Y = 344` (int, lava surface); `in_grab_band(y) -> bool`.
+- Produces: `World(wave=1)` with: `platforms -> list[Platform]` (`Platform(x, y, w, id, alive=True)`, y = top surface); `spawn_pads -> list[tuple[x, y]]` (4 pads); `apply_erosion(wave)`; `wrap_x(x) -> float`; `ground_under(x, prev_y, y) -> Platform | None` (landing = downward crossing: `prev_y <= platform.y <= y`, x within span, platform alive; returns None when `y <= prev_y`, i.e. rising); `LAVA_Y = 344` (int, lava surface); `in_grab_band(y) -> bool`.
 - Consumes: `config`.
 
 - [ ] **Step 1: Failing tests** `tests/test_world.py`:
@@ -287,9 +328,9 @@ def test_all_sfx_exist_valid_and_deterministic():
 from joust.world import World
 from joust import config
 
-def test_layout_nine_pieces_and_four_pads():
+def test_layout_ten_pieces_and_four_pads():
     w = World()
-    assert len(w.platforms) == 9    # classic 8-platform look; bottom shelf is 3 collision pieces
+    assert len(w.platforms) == 10   # 8 visible structures; bottom shelf is 3 collision pieces
     assert len(w.spawn_pads) == 4
     for px, py in w.spawn_pads:
         assert any(p.alive and p.x <= px <= p.x + p.w and abs(p.y - py) < 1 for p in w.platforms)
@@ -299,12 +340,13 @@ def test_wrap():
     assert w.wrap_x(-1) == config.LOGICAL_W - 1
     assert w.wrap_x(config.LOGICAL_W + 5) == 5
 
-def test_ground_under_only_when_falling_through_top():
+def test_ground_under_only_on_downward_crossing():
     w = World()
     p = w.platforms[0]
-    assert w.ground_under(p.x + p.w / 2, p.y + 1, vy=50) is p
-    assert w.ground_under(p.x + p.w / 2, p.y + 1, vy=-50) is None      # rising: pass through
-    assert w.ground_under(p.x - 10, p.y + 1, vy=50) is None            # off span
+    assert w.ground_under(p.x + p.w / 2, p.y - 1, p.y + 1) is p        # crossed top going down
+    assert w.ground_under(p.x + p.w / 2, p.y + 1, p.y - 1) is None     # rising: pass through
+    assert w.ground_under(p.x - 10, p.y - 1, p.y + 1) is None          # off span
+    assert w.ground_under(p.x + p.w / 2, p.y + 2, p.y + 8) is None     # already below top: no snap
 
 def test_erosion_schedule_is_cumulative_and_permanent():
     w = World()
@@ -321,7 +363,7 @@ def test_grab_band():
     assert w.in_grab_band(w.LAVA_Y - 5)
     assert not w.in_grab_band(w.LAVA_Y - config.TROLL_GRAB_BAND - 1)
 ```
-- [ ] **Step 2: FAIL.** **Step 3: Implement** — layout data (classic-arcade approximation; tuples x, y, w; ids `p0..p8`): top-center `p0 (240,64,160)`, upper cliffs `p1 (24,120,96)` / `p2 (520,120,96)`, mid ledges `p3 (0,208,72)` / `p4 (568,208,72)`, floater `p5 (288,160,64)`, bottom shelf pre-split into three pieces `p6 (96,300,120)` / `p7 (216,300,208)` / `p8 (424,300,120)` (rendered as one shelf). Erosion: wave≥4 kills `p7` (bottom-center span), wave≥6 kills `p3`/`p4`, wave≥9 kills `p5`. Pads on p0, p1, p2, p6 (all survive every erosion stage). `apply_erosion` monotonic via kept max-wave. **Step 4: PASS.** **Step 5: Report**; commit `feat: world layout wrap erosion`.
+- [ ] **Step 2: FAIL.** **Step 3: Implement** — layout data (classic-arcade approximation, 8 visible structures; tuples x, y, w; ids `p0..p9`): top-center `p0 (240,64,160)`, upper cliffs `p1 (24,120,96)` / `p2 (520,120,96)`, mid ledges `p3 (0,208,72)` / `p4 (568,208,72)`, floaters `p5 (200,160,64)` / `p6 (376,160,64)`, bottom shelf pre-split into three pieces `p7 (96,300,120)` / `p8 (216,300,208)` / `p9 (424,300,120)` (rendered as one shelf). Erosion: wave≥4 kills `p8` (bottom-center span), wave≥6 kills `p3`/`p4`, wave≥9 kills `p5`. Pads on p0, p1, p2, p7 (all survive every erosion stage). `apply_erosion` monotonic via kept max-wave. **Step 4: PASS.** **Step 5: Report**; commit `feat: world layout wrap erosion`.
 
 ### Task 5: Player physics — flap, thrust, ground, wrap
 
@@ -330,7 +372,7 @@ def test_grab_band():
 - Modify: `joust/main.py` (wire a playable dev scene: 1 player + world render as flat-color rects if sprite assets absent)
 
 **Interfaces:**
-- Produces: `kinematics.step_airborne(pos, vel, thrust_dir, dt) -> (pos, vel)` shared by enemies; `Player(pid, x, y)` with `.flap()`, `.set_dir(-1|0|1)`, `.update(dt, world)`, fields `x, y, vx, vy, grounded, facing, alive, lance_y` (absolute y of lance tip = `y + lance_offset_y`, offset loaded later from manifest, default -20), `.state in {"stand","run","flap","brake","shimmer"}`.
+- Produces: `kinematics.step_airborne(pos, vel, thrust_dir, dt, thrust_ax=config.THRUST_AX, max_vx=config.MAX_VX) -> (pos, vel)` shared by enemies (tier-3 passes multiplied overrides); `Player(pid, x, y)` with `.flap()`, `.set_dir(-1|0|1)`, `.update(dt, world)`, fields `x, y, vx, vy, grounded, facing, alive, lance_y` (absolute y of lance tip = `y + lance_offset_y`, offset loaded later from manifest, default -20), `.mounted = True`, `.rect() -> (x - config.MOUNT_W/2, y - config.MOUNT_H, MOUNT_W, MOUNT_H)`, `.state in {"stand","run","flap","brake","shimmer"}`, spawn invulnerability: `.invulnerable -> bool`, True from spawn until first `set_dir(±1)`/`flap()` OR `SPAWN_INVULN_S` elapses.
 - Consumes: `world.ground_under`, `world.wrap_x`, `config`.
 
 - [ ] **Step 1: Failing tests** `tests/test_player_physics.py`:
@@ -391,6 +433,21 @@ def test_ceiling_clamps():
     p.vy = -300
     steps(p, w, 10)
     assert p.y >= 0
+
+def test_rect_contract():
+    p = Player(1, 100, 200)
+    assert p.rect() == (100 - config.MOUNT_W / 2, 200 - config.MOUNT_H,
+                        config.MOUNT_W, config.MOUNT_H)
+
+def test_spawn_invulnerability_clears_on_move_or_timeout():
+    w = World()
+    p = Player(1, 320, 100)
+    assert p.invulnerable
+    p.set_dir(1)
+    assert not p.invulnerable
+    q = Player(1, 320, 100)
+    steps(q, w, int(config.SPAWN_INVULN_S / config.DT) + 2)
+    assert not q.invulnerable
 ```
 - [ ] **Step 2: FAIL.** **Step 3: Implement** `kinematics.step_airborne` (thrust accel, drag when `thrust_dir == 0`, vx clamp, gravity, integrate); `Player.update`: airborne → kinematics + landing check (`ground_under` with prev-y crossing) + wrap + ceiling clamp; grounded → run accel/skid (`GROUND_SKID_DECEL` when `sign(dir) != sign(vx)`, state `brake`), fall off edge when platform span exceeded or platform dead, `flap()` while grounded lifts off. Facing follows last nonzero dir. **Step 4: PASS.** **Step 5:** wire dev scene (`python -m joust` flies a rect around real platforms), report; commit `feat: player flap physics`.
 
@@ -400,16 +457,17 @@ def test_ceiling_clamps():
 - Create: `joust/combat.py`, `tests/test_combat.py`
 
 **Interfaces:**
-- Produces: `resolve(a_lance_y, b_lance_y, tie_px=config.TIE_PX) -> "a" | "b" | "tie"`; `bounce(a, b)` (swap/repel: sets `a.vx, b.vx` away from each other at `max(60, |vx|)`, tiny upward nudge -30); `collide(a, b) -> bool` AABB on `.rect()` (entities expose `rect() -> (x-w/2, y-h, w, h)`).
-- Consumes: entity fields `x, y, vx, vy, lance_y`.
+- Produces: `resolve(a_lance_y, b_lance_y, tie_px=config.TIE_PX) -> "a" | "b" | "tie"`; `resolve_pair(a, b) -> "a" | "b" | "tie" | "collect_a" | "collect_b" | None` (both `.mounted` → `resolve` on lance_y; exactly one mounted → mounted side collects: `"collect_a"` means a collects b; neither mounted → None); `bounce(a, b)` (repel: sets `a.vx, b.vx` away from each other at `max(config.BOUNCE_MIN_VX, |vx|)`, upward nudge `config.BOUNCE_NUDGE_VY`); `collide(a, b) -> bool` AABB on `.rect()` (entities expose `rect() -> (x-w/2, y-h, w, h)`).
+- Consumes: entity fields `x, y, vx, vy, lance_y, mounted`.
 
 - [ ] **Step 1: Failing tests** `tests/test_combat.py`:
 ```python
 from joust import combat, config
 
 class Stub:
-    def __init__(self, x, y, lance_y, vx=0):
+    def __init__(self, x, y, lance_y, vx=0, mounted=True):
         self.x, self.y, self.lance_y, self.vx, self.vy = x, y, lance_y, vx, 0
+        self.mounted = mounted
     def rect(self):
         return (self.x - 20, self.y - 32, 40, 32)
 
@@ -419,7 +477,17 @@ def test_higher_lance_wins():
 
 def test_tie_band_inclusive():
     assert combat.resolve(100, 100 + config.TIE_PX) == "tie"
-    assert combat.resolve(100, 100 + config.TIE_PX + 1) == "b"
+    assert combat.resolve(100, 100 + config.TIE_PX + 1) == "a"   # a at y=100 is higher
+
+def test_resolve_pair_matrix():
+    hi, lo = Stub(0, 0, 80), Stub(0, 0, 120)
+    assert combat.resolve_pair(hi, lo) == "a"
+    assert combat.resolve_pair(lo, hi) == "b"
+    assert combat.resolve_pair(Stub(0, 0, 100), Stub(0, 0, 102)) == "tie"
+    walker = Stub(0, 0, 100, mounted=False)
+    assert combat.resolve_pair(hi, walker) == "collect_a"
+    assert combat.resolve_pair(walker, hi) == "collect_b"
+    assert combat.resolve_pair(walker, Stub(0, 0, 0, mounted=False)) is None
 
 def test_bounce_repels():
     a, b = Stub(100, 100, 80, vx=50), Stub(120, 100, 80, vx=-50)
@@ -438,7 +506,7 @@ def test_collide_aabb():
 - Create: `joust/entities/enemy.py`, `tests/test_enemy.py`
 
 **Interfaces:**
-- Produces: `Enemy(tier, x, y, rng)` (tier 1..3; `rng: random.Random` injected for determinism) with `.update(dt, world, players)`, fields as Player (`x, y, vx, vy, lance_y, alive, state`), `.tier`, `.points` (= `config.SCORE_TIERS[tier-1]`), `.rect()`. Behavior contract: tier 1 random-walk flaps, ignores players; tier 2 steers toward nearest living player x, flaps to match altitude ±16 px sloppily (flap decision at most every 0.25 s); tier 3 same but 1.35× thrust/max-vx and holds cruise altitude ≥ 40 px above nearest player until horizontal distance < 80, then dives.
+- Produces: `Enemy(tier, x, y, rng)` (tier 1..3; `rng: random.Random` injected for determinism) with `.update(dt, world, players)`, fields as Player (`x, y, vx, vy, lance_y, alive, state`), `.mounted = True`, `.tier`, `.points` (= `config.SCORE_TIERS[tier-1]`), `.rect()` (same MOUNT_W/H contract as Player), spawn invulnerability like Player (`.invulnerable` until first AI flap or `SPAWN_INVULN_S`). Behavior contract: tier 1 random-walk flaps, ignores players; tier 2 steers toward nearest living player x, flaps to match altitude ±16 px sloppily (flap decision at most every `config.AI_FLAP_COOLDOWN_S`); tier 3 same but passes `thrust_ax=THRUST_AX*LORD_SPEED_MULT, max_vx=MAX_VX*LORD_SPEED_MULT` to `step_airborne` and holds cruise altitude ≥ `LORD_CRUISE_ABOVE` px above nearest player until horizontal distance < `LORD_DIVE_RANGE`, then dives.
 - Consumes: `kinematics.step_airborne`, `world`, `config`.
 
 - [ ] **Step 1: Failing tests** `tests/test_enemy.py`:
@@ -495,7 +563,7 @@ def test_shadow_lord_faster_and_higher():
 - Create: `joust/entities/egg.py`, `tests/test_egg.py`
 
 **Interfaces:**
-- Produces: `Egg(from_tier, x, y, vx, vy)` with `.update(dt, world) -> Optional["Enemy-spawn-request"]`, `.state in {"falling","resting","hatchling","remounting","dead"}`, `.collect() -> None` (marks dead, caller scores), `.doomed` (landed in lava → dead, no points), `.next_tier` (= `min(from_tier + 1, 3)`); `EggChain` with `.value() -> int` returning next chain score and advancing (250→500→750→1000, stays 1000), `.reset()`. When hatch+wait elapse and remount fires, `.update` returns `("spawn_enemy", next_tier, x, y)` exactly once then state `dead`.
+- Produces: `Egg(from_tier, x, y, vx, vy)` with `.update(dt, world) -> Optional["Enemy-spawn-request"]`, `.state in {"falling","resting","hatchling","remounting","dead"}`, `.mounted = False` always, `.rect()` (EGG_W/H while egg states, HATCHLING_W/H in `hatchling`; center-bottom anchor like all entities), `.collectible -> bool` (True in `{"falling","resting","hatchling"}`), `.collect() -> None` (marks dead, caller scores), `.doomed` (landed in lava → dead, no points), `.next_tier` (= `min(from_tier + 1, 3)`); `EggChain` with `.value() -> int` returning next chain score and advancing (250→500→750→1000, stays 1000), `.reset()`. When hatch+wait elapse and remount fires, `.update` returns `("spawn_enemy", next_tier, x, y)` exactly once then state `dead`.
 - Consumes: `world.ground_under`, `world.LAVA_Y`, `config`.
 
 - [ ] **Step 1: Failing tests** `tests/test_egg.py`:
@@ -550,7 +618,7 @@ def test_chain():
     c.reset()
     assert c.value() == 250
 ```
-- [ ] **Step 2: FAIL. Step 3: implement** (gravity fall + bounce `vy *= -EGG_BOUNCE_DAMP` until |vy|<20 → resting; timers; lava check `y >= world.LAVA_Y`). **Step 4: PASS. Step 5: report**; commit `feat: egg lifecycle and chain`.
+- [ ] **Step 2: FAIL. Step 3: implement** (gravity fall + bounce `vy *= -EGG_BOUNCE_DAMP` until `|vy| < config.EGG_REST_VY` → resting; timers; lava check `y >= world.LAVA_Y`). **Step 4: PASS. Step 5: report**; commit `feat: egg lifecycle and chain`.
 
 ### Task 9: Troll + Pterodactyl
 
@@ -558,8 +626,8 @@ def test_chain():
 - Create: `joust/entities/troll.py`, `joust/entities/pterodactyl.py`, `tests/test_troll.py`, `tests/test_ptero.py`
 
 **Interfaces:**
-- Produces: `Troll()` — `.update(dt, world, mounts)`: if no victim, may latch onto any mount with `in_grab_band(mount.y)` (pick lowest); while latched sets `victim.vy = config.TROLL_DRAG_VY` each step; victim's `.flap()` during latch must call `troll.fight()` (adds `TROLL_ESCAPE_VY` to an internal escape velocity so 3+ rapid flaps break free above band); victim dragged to `y >= world.LAVA_Y` → `.consumed = victim`, unlatch. `.victim`, `.state in {"idle","rise","grab","drag"}`.
-  `Ptero(side)` — `.update(dt, world, target)`: enters from `side in {-1, 1}`, horizontal speed `PTERO_SPEED` toward target with sine bob (amplitude 24, period 1.6 s), `mouth_open` True when |Δx to target| < 60; `.mouth_rect()` small (10×8) box at beak; `.rect()` full body; `.alive`. `PteroDirector(wave_is_ptero)` — `.update(dt, wave_active_seconds, enemies_left) -> list[Ptero]` spawning per config timers (first at `PTERO_FIRST_S` if `enemies_left > 0`, respawn `PTERO_RESPAWN_S` after death/exit; ptero waves spawn 3 at t=0).
+- Produces: `Troll()` — `.update(dt, world, mounts)`: if no victim, latch onto the LOWEST mount with `in_grab_band(mount.y)`. Escape math (exact): troll keeps `escape_v` (starts 0); `fight()` does `escape_v += config.TROLL_ESCAPE_VY`; each latched update first decays `escape_v` toward 0 by `TROLL_ESCAPE_DECAY * dt`, computes `pull = TROLL_DRAG_VY + escape_v`, and if `pull <= TROLL_RELEASE_VY` → unlatch, set `victim.vy = pull` one final time (victim flies free rising), reset `escape_v = 0`; else sets `victim.vy = pull`. So one flap (40−55=−15 > −20) stays latched; three rapid flaps (40−165=−125 ≤ −20) break free. An escape-unlatch starts a `TROLL_COOLDOWN_S` timer during which the troll latches nobody (the freed victim is still inside the band for a few frames — without cooldown it would re-latch instantly). Victim's `.flap()` while latched must be routed to `troll.fight()` by the caller. Victim reaching `y >= world.LAVA_Y` → `.consumed = victim`, unlatch. `.victim`, `.state in {"idle","rise","grab","drag"}`.
+  `Ptero(side)` — `.update(dt, world, target)`: enters from `side in {-1, 1}`, horizontal speed `PTERO_SPEED` toward target with sine bob (amplitude `PTERO_BOB_AMP`, period `PTERO_BOB_PERIOD_S`), `mouth_open` True when |Δx to target| < `PTERO_MOUTH_RANGE`; `.mouth_rect()` box `PTERO_MOUTH_W×PTERO_MOUTH_H` at beak; `.rect()` full body (PTERO_W/H); `.alive`; `.check_lance(lance_x, lance_y) -> "kill" | None` (`"kill"` iff `mouth_open` and point inside `mouth_rect()`; sets `.alive = False`). Any body contact with a player that is not a mouth-kill is lethal to the player (enforced by PlayState in Task 11). `PteroDirector(wave_is_ptero)` — `.update(dt, wave_active_seconds, enemies_left) -> list[Ptero]` spawning per config timers (first at `PTERO_FIRST_S` if `enemies_left > 0`, respawn `PTERO_RESPAWN_S` after death/exit; ptero waves spawn 3 at t=0).
 - Consumes: `world`, `config`.
 
 - [ ] **Step 1: Failing tests** (both files; complete code):
@@ -641,6 +709,22 @@ def test_director_timers():
 def test_ptero_wave_spawns_three_at_start():
     d = PteroDirector(wave_is_ptero=True)
     assert len(d.update(config.DT, 0.0, enemies_left=0)) == 3
+
+def test_lance_kill_only_in_open_mouth():
+    w = World()
+    p = Ptero(side=-1)
+    t = T(320, 180)
+    p.x, p.y = t.x + 50, 180
+    p.update(config.DT, w, t)
+    assert p.mouth_open
+    mx, my, mw, mh = p.mouth_rect()
+    assert p.check_lance(mx + mw / 2, my + mh / 2) == "kill" and not p.alive
+    q = Ptero(side=-1)
+    q.x, q.y = t.x + 300, 180          # far: mouth closed
+    q.update(config.DT, w, t)
+    assert not q.mouth_open
+    qx, qy, qw, qh = q.mouth_rect()
+    assert q.check_lance(qx + qw / 2, qy + qh / 2) is None and q.alive
 ```
 - [ ] **Step 2: FAIL. Step 3: implement. Step 4: PASS. Step 5: report**; commit `feat: troll and pterodactyl`.
 
@@ -650,7 +734,7 @@ def test_ptero_wave_spawns_three_at_start():
 - Create: `joust/waves.py`, `tests/test_waves.py`
 
 **Interfaces:**
-- Produces: `wave_type(n, two_player) -> "normal"|"survival"|"egg"|"ptero"|"team"` implementing spec schedule + precedence (survival > egg > ptero > team; loser skips to ITS next slot: survival W5+5k; egg W8+5k; ptero W11+7k; team 2P-only W6+5k); `composition(n, rng) -> list[int]` (tier list per spec table: W1 [1,1,1]; W2 [1,1,1,1]; W3 [1,1,2,2]; W4-6 mixed 4-6 hunters-dominant; W7+ adds 1-2 tier-3; egg waves return [] buzzards + 6 pre-placed eggs via `egg_wave_layout(world) -> list[(x, y)]` on living platforms); `WaveDirector(two_player)` — `.start(n, world)` applies erosion + returns spawn plan; `.is_clear(enemies, eggs) -> bool` (pteros excluded by caller); `.end_bonuses(n, deaths_by_player, jousted_teammate) -> dict[pid, int]` (survival: 3000 per deathless player on survival waves; team: 3000 each if 2P, team wave, and not jousted_teammate).
+- Produces: `wave_type(n, two_player) -> "normal"|"survival"|"egg"|"ptero"|"team"` implementing spec schedule + precedence (survival > egg > ptero > team; loser skips to ITS next slot: survival W5+5k; egg W8+5k; ptero W11+7k; team 2P-only W6+5k); `composition(n, rng) -> list[int]` (tier list per spec table: W1 [1,1,1]; W2 [1,1,1,1]; W3 [1,1,2,2]; W4-6 mixed 4-6 hunters-dominant; W7+ adds 1-2 tier-3; egg waves return [] buzzards + 6 pre-placed eggs via `egg_wave_layout(world) -> list[(x, y)]` on living platforms); `WaveDirector(two_player)` — `.start(n, world, rng)` applies erosion + returns the spawn plan, exact schema: `{"wave_type": str, "buzzards": list[int] (tiers, spawned at pads round-robin by caller), "eggs": list[tuple[x, y]] (empty unless egg wave), "pteros": int (immediate spawns; 0 unless ptero wave)}`; `.is_clear(enemies, eggs) -> bool` (pteros excluded by caller); `.end_bonuses(n, deaths_by_player, jousted_teammate) -> dict[pid, int]` (survival: 3000 per deathless player on survival waves; team: 3000 each if 2P, team wave, and not jousted_teammate).
 - Consumes: `world.apply_erosion`, `config`.
 
 - [ ] **Step 1: Failing tests** `tests/test_waves.py`:
@@ -668,8 +752,9 @@ def test_schedule_and_precedence():
     assert wave_type(6, False) == "normal"          # team is 2P-only
     # collision: W18 = egg(8+5+5) AND ptero(11+7) -> egg wins, ptero skips to W25
     assert wave_type(18, False) == "egg"
-    assert wave_type(25, False) == "ptero"
-    # collision: W10 survival beats W10 nothing else; W15 survival vs egg W18? no -> W15 survival
+    # W25 is survival (5+5k) AND ptero's deferred slot -> survival wins, ptero skips to W32
+    assert wave_type(25, False) == "survival"
+    assert wave_type(32, False) == "ptero"
     assert wave_type(15, False) == "survival"
 
 def test_composition_progression():
@@ -709,7 +794,7 @@ def test_end_bonuses():
 - Modify: `joust/states.py` (real AttractState/PlayState/GameOverState/HighScoreEntryState), `joust/main.py` (replace dev scene)
 
 **Interfaces:**
-- Produces: `assets.load() -> Assets` (`.frame(name) -> pygame.Surface`, `.anchor(name)`, `.lance(name)`, auto-runs both tools if outputs missing, raises `AssetError` with one-line message on generator failure); `audio.play(name)` with per-name 60 ms cooldown; `hud.draw(surface, assets, game)` (scores/lives/wave banner via `font_*` frames); `persistence.load_scores()/save_scores(list)` at `%APPDATA%/JoustClone/highscores.json`, atomic tmp-then-rename, corrupt → defaults; `PlayState` composing ALL prior modules per spec rules (joust outcomes, egg spawn on enemy death at loser position, PvP: winner +500 loser loses life, respawn shimmer invuln on pads, lava kills, troll latch integration calling `.fight()` on victim flap, ptero mouth-lance kill = +1000 else player death on contact, wave flow: start → clear check → bonuses → next).
+- Produces: `assets.load() -> Assets` (`.frame(name) -> pygame.Surface`, `.anchor(name)`, `.lance(name)`); STALE definition: outputs missing OR manifest unparseable OR any REQUIRED frame name absent → call `assets.regenerate()` (runs both tools) exactly once, then re-load; still stale after regen → raise `AssetError` with one-line message. `audio.init()` (calls `pygame.mixer.set_num_channels(config.MIXER_CHANNELS)`) and `audio.play(name)` with per-name 60 ms cooldown; `hud.draw(surface, assets, game)` (scores/lives/wave banner via `font_*` frames); `persistence.load_scores()/save_scores(list)` at `%APPDATA%/JoustClone/highscores.json`, atomic tmp-then-rename, corrupt → defaults; `PlayState` composing ALL prior modules per spec rules (joust outcomes via `combat.resolve_pair`, egg spawn on enemy death at loser position, PvP: winner +500 loser loses life, respawn shimmer invuln on pads — invulnerable entities skip combat collisions entirely, lava kills, troll latch integration calling `.fight()` on victim flap, ptero `check_lance` kill = +1000 else player death on body contact, wave flow: start → clear check → bonuses → next). Scoring goes through `PlayState.award(pid, points) -> None` (single scoring path; grants +1 life at every `EXTRA_LIFE_EVERY` crossing — Task 12 tests this exact method).
 - Consumes: everything from Tasks 1-10.
 
 - [ ] **Step 1: Failing tests** — complete code for both files:
@@ -731,13 +816,22 @@ def test_load_provides_every_required_frame():
     assert a.lance("p1_stand") is not None
     assert a.lance("egg_0") is None
 
-def test_sabotaged_manifest_raises_asset_error(tmp_path, monkeypatch):
+def test_corrupt_manifest_triggers_regen_then_error(tmp_path, monkeypatch):
     (tmp_path / "sprites").mkdir(parents=True)
     (tmp_path / "sprites" / "sprites.json").write_text("{broken")
     monkeypatch.setattr(assets, "ASSET_DIR", tmp_path)
-    monkeypatch.setattr(assets, "regenerate", lambda: None)   # regen "runs" but fixes nothing
+    calls = []
+    monkeypatch.setattr(assets, "regenerate", lambda: calls.append(1))  # attempts, fixes nothing
     with pytest.raises(assets.AssetError):
         assets.load()
+    assert calls == [1]          # regeneration attempted exactly once
+
+def test_audio_init_sets_eight_channels():
+    import pygame
+    from joust import audio
+    pygame.init()
+    audio.init()
+    assert pygame.mixer.get_num_channels() == 8
 ```
 ```python
 # tests/test_persistence.py
@@ -772,7 +866,7 @@ def test_atomic_no_tmp_left(tmp_path, monkeypatch):
 - Test: `tests/test_two_player.py`
 
 **Interfaces:**
-- Produces: attract screen 1/2-player select (keys 1/2 or pad Start); P2 spawn on second pad; friendly-fire joust applies PvP rule; team-wave bonus wiring uses `WaveDirector.end_bonuses` with real `jousted_teammate` tracking; both-dead → GameOverState → high-score entry (3 initials via arrows/pad) when score makes table.
+- Produces: attract screen 1/2-player select (keys 1/2 or pad Start); P2 spawn on second pad; friendly-fire joust applies PvP rule; team-wave bonus wiring uses `WaveDirector.end_bonuses` with real `jousted_teammate` tracking; both-dead → GameOverState → high-score entry (3 initials via arrows/pad) when score makes table. Gamepad contract (exact): enumerate joysticks once on attract entry (`pygame.joystick`); pad index 0 → P1, index 1 → P2; move = axis 0 where `abs(v) > config.PAD_DEADZONE`, else hat 0 x; flap = button 0 (edge-triggered, like keydown); attract select = button 7, fallback button 6; keyboard always active alongside pads; no hotplug support.
 - Consumes: Tasks 10/11 interfaces.
 
 - [ ] **Step 1: Failing tests** `tests/test_two_player.py` (logic-level, no rendering):
@@ -806,6 +900,17 @@ def test_game_over_when_both_dead():
     for p in ps.players:
         p.lives = 0
     assert ps.is_game_over()
+
+def test_extra_life_on_each_20k_crossing():
+    ps = make_2p()
+    p1 = ps.players[0]
+    lives0 = p1.lives
+    ps.award(1, 19500)
+    assert p1.lives == lives0
+    ps.award(1, 600)                   # crosses 20000
+    assert p1.lives == lives0 + 1
+    ps.award(1, 19900)                 # 40000 crossed at 40000 exactly
+    assert p1.lives == lives0 + 2
 ```
 - [ ] **Step 2: FAIL. Step 3: implement (`setup_logic` split from pygame init so tests stay headless). Step 4: full suite PASS. Step 5: report**; commit `feat: two player complete`.
 
@@ -815,6 +920,6 @@ def test_game_over_when_both_dead():
 - Create: `README.md`
 - Modify: none expected (fixes only if smoke finds bugs)
 
-- [ ] **Step 1:** README: requirements, `python -m joust`, controls table, how to regenerate assets, how to run tests, PyInstaller one-liner (`pyinstaller --onefile --add-data assets;assets -n joust joust/__main__.py` — documented, not run by worker).
+- [ ] **Step 1:** README: requirements, `python -m joust`, controls table, how to regenerate assets, how to run tests, PyInstaller one-liner (`pyinstaller --onefile --add-data "assets;assets" -n joust joust/__main__.py` — quoted `;` is load-bearing in PowerShell; documented, not run by worker).
 - [ ] **Step 2 (ORCHESTRATOR):** manual smoke per spec Testing section — run game, verify each feature visually, screenshots. Tune `config.py` feel constants if flap feels wrong; rerun suite.
 - [ ] **Step 3:** commit `docs: README and smoke fixes`; then blind cross-vendor Codex review of whole branch per spec Process.
