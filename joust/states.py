@@ -307,7 +307,14 @@ class PlayState(State):
             for enemy in self.enemies:
                 if not enemy.alive or enemy.invulnerable or not combat.collide(player, enemy):
                     continue
-                outcome = combat.resolve_pair(player, enemy)
+                outcome = (
+                    combat.resolve(
+                        player.y + config.JOUST_RIDER_Y,
+                        enemy.y + config.JOUST_RIDER_Y,
+                    )
+                    if player.mounted and enemy.mounted
+                    else combat.resolve_pair(player, enemy)
+                )
                 if outcome == "a":
                     self._defeat_enemy(player.pid, enemy)
                 elif outcome == "b":
@@ -341,7 +348,14 @@ class PlayState(State):
                 and not first.invulnerable and not second.invulnerable
                 and combat.collide(first, second)
             ):
-                outcome = combat.resolve_pair(first, second)
+                outcome = (
+                    combat.resolve(
+                        first.y + config.JOUST_RIDER_Y,
+                        second.y + config.JOUST_RIDER_Y,
+                    )
+                    if first.mounted and second.mounted
+                    else combat.resolve_pair(first, second)
+                )
                 if outcome == "a":
                     self.apply_pvp_joust(first, second)
                 elif outcome == "b":

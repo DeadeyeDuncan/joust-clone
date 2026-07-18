@@ -13,6 +13,7 @@ GROUND_SKID_DECEL = 480.0
 
 # combat
 TIE_PX = 4
+JOUST_RIDER_Y = -20.0
 
 # scores
 SCORE_TIERS = (500, 750, 1500)

@@ -20,6 +20,20 @@ def test_tie_band_inclusive():
     assert combat.resolve(100, 100 + config.TIE_PX + 1) == "a"   # a at y=100 is higher
 
 
+def test_equal_altitude_joust_is_tie():
+    assert hasattr(config, "JOUST_RIDER_Y")
+    first = Stub(0, 100, 100 + config.JOUST_RIDER_Y)
+    equal = Stub(0, 100, 100 + config.JOUST_RIDER_Y)
+    lower = Stub(
+        0,
+        100 + config.TIE_PX + 1,
+        100 + config.TIE_PX + 1 + config.JOUST_RIDER_Y,
+    )
+
+    assert combat.resolve(first.lance_y, equal.lance_y) == "tie"
+    assert combat.resolve(first.lance_y, lower.lance_y) == "a"
+
+
 def test_resolve_pair_matrix():
     hi, lo = Stub(0, 0, 80), Stub(0, 0, 120)
     assert combat.resolve_pair(hi, lo) == "a"
