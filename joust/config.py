@@ -1,0 +1,81 @@
+LOGICAL_W, LOGICAL_H = 640, 360
+SCALE_DEFAULT = 2
+FPS = 60
+DT = 1.0 / FPS
+
+# physics (playtest-tune; starting values from spec)
+GRAVITY = 420.0
+FLAP_VY = -160.0
+THRUST_AX = 300.0
+DRAG_X = 0.98            # per-step multiplier on vx when no thrust
+MAX_VX = 220.0
+GROUND_SKID_DECEL = 480.0
+
+# combat
+TIE_PX = 4
+
+# scores
+SCORE_TIERS = (500, 750, 1500)
+EGG_CHAIN = (250, 500, 750, 1000)
+SCORE_PTERO = 1000
+BONUS_SURVIVAL = 3000
+BONUS_TEAM = 3000
+EXTRA_LIFE_EVERY = 20000
+SCORE_PVP = 500
+START_LIVES = 3
+
+# eggs
+EGG_HATCH_S = 8.0
+HATCHLING_WAIT_S = 4.0
+EGG_BOUNCE_DAMP = 0.5
+
+# troll
+TROLL_GRAB_BAND = 24
+TROLL_DRAG_VY = 40.0
+TROLL_ESCAPE_VY = -55.0
+TROLL_ACTIVE_FROM_WAVE = 2
+
+# pterodactyl
+PTERO_FIRST_S = 20.0
+PTERO_RESPAWN_S = 15.0
+PTERO_SPEED = 140.0
+
+# spawn
+SPAWN_SHIMMER_S = 1.0
+SPAWN_INVULN_S = 3.0     # invulnerability cap; cleared early by first move/flap/AI action
+
+# combat bounce
+BOUNCE_MIN_VX = 60.0
+BOUNCE_NUDGE_VY = -30.0
+
+# enemy AI
+AI_FLAP_COOLDOWN_S = 0.25
+LORD_SPEED_MULT = 1.35
+LORD_CRUISE_ABOVE = 40
+LORD_DIVE_RANGE = 80
+
+# egg rest threshold
+EGG_REST_VY = 20.0
+
+# pterodactyl flight
+PTERO_BOB_AMP = 24.0
+PTERO_BOB_PERIOD_S = 1.6
+PTERO_MOUTH_RANGE = 60
+PTERO_MOUTH_W, PTERO_MOUTH_H = 10, 8
+
+# troll escape
+TROLL_RELEASE_VY = -20.0   # net pull at/below this -> unlatch
+TROLL_ESCAPE_DECAY = 30.0  # px/s^2 decay of escape velocity toward 0
+TROLL_COOLDOWN_S = 1.0     # after an escape, troll cannot re-latch for this long
+
+# entity collision sizes (w, h), rect anchored center-bottom
+MOUNT_W, MOUNT_H = 40, 32
+EGG_W, EGG_H = 12, 14
+HATCHLING_W, HATCHLING_H = 14, 22
+PTERO_W, PTERO_H = 56, 36
+
+# input
+PAD_DEADZONE = 0.3
+
+# audio
+MIXER_CHANNELS = 8
