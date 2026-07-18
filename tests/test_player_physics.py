@@ -83,3 +83,20 @@ def test_spawn_invulnerability_clears_on_move_or_timeout():
     q = Player(1, 320, 100)
     steps(q, w, int(config.SPAWN_INVULN_S / config.DT) + 2)
     assert not q.invulnerable
+
+
+def test_shimmer_state_persists_while_invulnerable():
+    w = World()
+    p = Player(1, 320, 100)
+    steps(p, w, 5)
+    assert p.invulnerable
+    assert p.state == "shimmer"
+
+    p.set_dir(1)
+    p.update(config.DT, w)
+    assert p.state != "shimmer"
+
+    q = Player(2, 320, 100)
+    steps(q, w, int(config.SPAWN_INVULN_S / config.DT) + 2)
+    assert not q.invulnerable
+    assert q.state != "shimmer"

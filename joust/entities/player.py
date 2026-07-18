@@ -74,6 +74,9 @@ class Player:
         else:
             self._update_airborne(dt, world)
 
+        if self._invulnerable:
+            self.state = "shimmer"
+
     def _update_airborne(self, dt, world):
         previous_y = self.y
         (self.x, self.y), (self.vx, self.vy) = step_airborne(
