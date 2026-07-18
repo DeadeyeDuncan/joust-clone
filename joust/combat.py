@@ -20,7 +20,9 @@ def resolve_pair(a, b):
 def bounce(a, b):
     a_speed = max(config.BOUNCE_MIN_VX, abs(a.vx))
     b_speed = max(config.BOUNCE_MIN_VX, abs(b.vx))
-    dx = ((a.x - b.x + config.LOGICAL_W / 2) % config.LOGICAL_W) - config.LOGICAL_W / 2
+    dx = a.x - b.x
+    if a.wraps and b.wraps:
+        dx = ((dx + config.LOGICAL_W / 2) % config.LOGICAL_W) - config.LOGICAL_W / 2
     if dx <= 0:
         a.vx, b.vx = -a_speed, b_speed
     else:
@@ -33,9 +35,9 @@ def collide(a, b):
     bx, by, bw, bh = b.rect()
     ax_center = ax + aw / 2
     bx_center = bx + bw / 2
-    dx = (
-        (ax_center - bx_center + config.LOGICAL_W / 2) % config.LOGICAL_W
-    ) - config.LOGICAL_W / 2
+    dx = ax_center - bx_center
+    if a.wraps and b.wraps:
+        dx = ((dx + config.LOGICAL_W / 2) % config.LOGICAL_W) - config.LOGICAL_W / 2
     return (
         abs(dx) < (aw + bw) / 2
         and ay < by + bh

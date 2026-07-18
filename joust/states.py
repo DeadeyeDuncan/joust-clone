@@ -117,6 +117,7 @@ class RiderlessBuzzard:
     vy: float
     facing: int
     alive: bool = True
+    wraps: bool = False
 
     def update(self, dt):
         self.x += self.vx * dt
@@ -504,14 +505,14 @@ class PlayState(State):
                 name = "egg_crack"
             else:
                 name = f"egg_{frame % 2}"
-            _blit(self.assets, surface, name, egg.x, egg.y)
+            _blit(self.assets, surface, name, egg.x, egg.y, wraps=egg.wraps)
         for buzzard in self.riderless:
-            _blit(self.assets, surface, f"buzzard_free_{frame % 2}", buzzard.x, buzzard.y, buzzard.facing)
+            _blit(self.assets, surface, f"buzzard_free_{frame % 2}", buzzard.x, buzzard.y, buzzard.facing, buzzard.wraps)
         for enemy in self.enemies:
             name = f"buzzard{enemy.tier}_glide" if enemy.state == "dive" else f"buzzard{enemy.tier}_flap_{frame % 3}"
-            _blit(self.assets, surface, name, enemy.x, enemy.y, enemy.facing)
+            _blit(self.assets, surface, name, enemy.x, enemy.y, enemy.facing, enemy.wraps)
             if enemy.invulnerable:
-                _blit(self.assets, surface, f"shimmer_{frame % 3}", enemy.x, enemy.y)
+                _blit(self.assets, surface, f"shimmer_{frame % 3}", enemy.x, enemy.y, wraps=enemy.wraps)
         for player in self.players:
             if not player.alive:
                 continue
@@ -524,16 +525,16 @@ class PlayState(State):
                 name = f"{prefix}_brake"
             else:
                 name = f"{prefix}_stand"
-            _blit(self.assets, surface, name, player.x, player.y, player.facing)
+            _blit(self.assets, surface, name, player.x, player.y, player.facing, player.wraps)
             if player.invulnerable:
-                _blit(self.assets, surface, f"shimmer_{frame % 3}", player.x, player.y)
+                _blit(self.assets, surface, f"shimmer_{frame % 3}", player.x, player.y, wraps=player.wraps)
         if self.wave_n >= config.TROLL_ACTIVE_FROM_WAVE and self.troll.state != "idle":
             name = f"troll_{self.troll.state}"
             victim = self.troll.victim
             _blit(self.assets, surface, name, victim.x if victim else config.LOGICAL_W / 2, self.world.LAVA_Y)
         for ptero in self.pteros:
             name = "ptero_mouth" if ptero.mouth_open else f"ptero_fly_{frame % 2}"
-            _blit(self.assets, surface, name, ptero.x, ptero.y, ptero.facing)
+            _blit(self.assets, surface, name, ptero.x, ptero.y, ptero.facing, ptero.wraps)
         hud.draw(surface, self.assets, self)
 
 
@@ -633,7 +634,7 @@ class HighScoreEntryState(State):
         hud.draw_text(surface, self.assets, f"{self.score:06d}", config.LOGICAL_W // 2, 198, centered=True)
 
 
-def _blit(assets, surface, name, x, y, facing=1):
+def _blit(assets, surface, name, x, y, facing=1, wraps=True):
     frame = assets.frame(name)
     anchor_x, anchor_y = assets.anchor(name)
     if facing < 0:
@@ -642,7 +643,7 @@ def _blit(assets, surface, name, x, y, facing=1):
     draw_x = round(x - anchor_x)
     draw_y = round(y - anchor_y)
     surface.blit(frame, (draw_x, draw_y))
-    if draw_x < 0:
+    if wraps and draw_x < 0:
         surface.blit(frame, (draw_x + config.LOGICAL_W, draw_y))
-    elif draw_x + frame.get_width() > config.LOGICAL_W:
+    elif wraps and draw_x + frame.get_width() > config.LOGICAL_W:
         surface.blit(frame, (draw_x - config.LOGICAL_W, draw_y))

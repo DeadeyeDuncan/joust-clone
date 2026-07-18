@@ -21,6 +21,7 @@ class Ptero:
         self.y = config.LOGICAL_H / 2 if y is None else float(y)
         self.facing = -side
         self.alive = True
+        self.wraps = False
         self.mouth_open = False
         self._phase = float(phase) % 1.0
 

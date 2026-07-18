@@ -2,9 +2,10 @@ from joust import combat, config
 
 
 class Stub:
-    def __init__(self, x, y, lance_y, vx=0, mounted=True):
+    def __init__(self, x, y, lance_y, vx=0, mounted=True, wraps=True):
         self.x, self.y, self.lance_y, self.vx, self.vy = x, y, lance_y, vx, 0
         self.mounted = mounted
+        self.wraps = wraps
 
     def rect(self):
         return (self.x - 20, self.y - 32, 40, 32)
@@ -61,7 +62,30 @@ def test_collide_uses_wrapped_horizontal_distance():
     assert not combat.collide(Stub(320, 100, 0), Stub(560, 100, 0))
 
 
+def test_non_wrapping_ptero_does_not_collide_across_seam():
+    ptero = Stub(-28, 100, 0, wraps=False)
+    player = Stub(620, 100, 0)
+
+    assert not combat.collide(ptero, player)
+
+
+def test_non_wrapping_entities_collide_when_adjacent_linearly():
+    assert combat.collide(
+        Stub(100, 100, 0, wraps=False),
+        Stub(130, 100, 0, wraps=False),
+    )
+
+
 def test_bounce_repels_across_wrap_seam():
     left, right = Stub(4, 100, 80), Stub(636, 100, 80)
     combat.bounce(left, right)
     assert left.vx > 0 > right.vx
+
+
+def test_bounce_uses_linear_direction_when_either_entity_does_not_wrap():
+    left = Stub(4, 100, 80, wraps=False)
+    right = Stub(636, 100, 80)
+
+    combat.bounce(left, right)
+
+    assert left.vx < 0 < right.vx

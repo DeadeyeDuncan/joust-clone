@@ -25,6 +25,7 @@ class Player:
         self.facing = 1
         self.alive = True
         self.mounted = True
+        self.wraps = True
         self.lance_offset_y = -20
         self.state = "shimmer"
 

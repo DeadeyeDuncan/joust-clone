@@ -11,6 +11,7 @@ class Egg:
         self.vy = float(vy)
         self.state = "falling"
         self.mounted = False
+        self.wraps = True
         self.doomed = False
 
         self._state_age = 0.0
