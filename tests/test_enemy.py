@@ -64,3 +64,11 @@ def test_targeting_uses_wrapped_distance():
         - config.LOGICAL_W / 2
     )
     assert distance < d0
+
+
+def test_nearest_player_uses_wrapped_horizontal_distance():
+    enemy = Enemy(2, 636, 120, random.Random(1))
+    across_seam = P(4, 120)
+    raw_near = P(500, 120)
+
+    assert enemy._nearest_living_player([raw_near, across_seam]) is across_seam

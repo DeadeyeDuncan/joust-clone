@@ -12,6 +12,10 @@ class Troll:
     def fight(self):
         self.escape_v += config.TROLL_ESCAPE_VY
 
+    def release(self):
+        """Release the current victim without starting escape cooldown."""
+        self._unlatch()
+
     def update(self, dt, world, mounts):
         if self.victim is not None:
             self._update_victim(dt, world)

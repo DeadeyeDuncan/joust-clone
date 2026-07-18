@@ -147,8 +147,14 @@ BUZZARD_RAMPS: dict[int, tuple[RGBA, RGBA, RGBA]] = {
     3: ((25, 42, 79, 255), (43, 91, 162, 255), (81, 176, 219, 255)),
 }
 
+ENEMY_RIDER_ACCENTS: dict[int, RGBA] = {
+    1: (211, 70, 52, 255),
+    2: (190, 188, 166, 255),
+    3: (70, 151, 211, 255),
+}
 
-def buzzard_frame(tier: int, pose: str, phase: int = 0) -> Image.Image:
+
+def _bare_buzzard_frame(tier: int, pose: str, phase: int = 0) -> Image.Image:
     image, d = canvas((48, 34))
     dark, mid, light = BUZZARD_RAMPS[tier]
     d.polygon([(12, 21), (3, 17), (7, 24), (2, 27), (15, 27)], fill=BLACK)
@@ -190,8 +196,37 @@ def buzzard_frame(tier: int, pose: str, phase: int = 0) -> Image.Image:
     return image
 
 
+def buzzard_frame(tier: int, pose: str, phase: int = 0) -> Image.Image:
+    image = _bare_buzzard_frame(tier, pose, phase)
+    d = ImageDraw.Draw(image)
+    accent = ENEMY_RIDER_ACCENTS[tier]
+    armor = (54, 62, 55, 255)
+    armor_light = (126, 137, 119, 255)
+
+    # Compact enemy knight: horned helm, angular shield, and short lance.
+    d.line([(27, 13), (44, 7)], fill=BLACK, width=3)
+    d.line([(27, 12), (44, 6)], fill=(180, 132, 68, 255), width=1)
+    d.polygon([(43, 4), (48, 5), (44, 9)], fill=BLACK)
+    d.polygon([(44, 5), (47, 5), (44, 8)], fill=(198, 211, 202, 255))
+    d.rectangle((18, 17, 30, 22), fill=BLACK)
+    d.rectangle((20, 18, 28, 20), fill=(79, 44, 38, 255))
+    d.polygon([(20, 10), (28, 10), (31, 19), (20, 19)], fill=BLACK)
+    d.polygon([(22, 11), (27, 11), (29, 18), (22, 18)], fill=armor)
+    d.line([(23, 11), (27, 12), (28, 15)], fill=armor_light, width=1)
+    d.rectangle((20, 5, 29, 12), fill=BLACK)
+    d.rectangle((22, 6, 27, 10), fill=armor)
+    d.rectangle((24, 8, 30, 10), fill=BLACK)
+    d.line([(26, 8), (29, 8)], fill=accent, width=1)
+    d.polygon([(21, 5), (18, 1), (23, 4)], fill=BLACK)
+    d.polygon([(27, 5), (31, 1), (29, 6)], fill=BLACK)
+    d.polygon([(16, 12), (22, 13), (21, 20), (16, 18)], fill=BLACK)
+    d.polygon([(18, 13), (21, 14), (20, 18), (18, 17)], fill=accent)
+    d.rectangle((23, 17, 28, 18), fill=accent)
+    return image
+
+
 def free_buzzard_frame(phase: int) -> Image.Image:
-    image = buzzard_frame(1, "flap", 0 if phase == 0 else 2).crop((3, 3, 45, 33))
+    image = _bare_buzzard_frame(1, "flap", 0 if phase == 0 else 2).crop((3, 3, 45, 33))
     # A warmer wild-bird tint distinguishes free mounts from enemy tiers.
     pixels = image.load()
     replacements = {

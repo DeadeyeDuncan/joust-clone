@@ -1,6 +1,7 @@
 from joust.entities.troll import Troll
 from joust.world import World
 from joust import config
+from joust.states import PlayState
 
 class M:
     def __init__(self, x, y):
@@ -36,3 +37,19 @@ def test_drag_to_lava_consumes():
         if t.consumed:
             break
     assert t.consumed is m
+
+
+def test_killing_latched_player_releases_troll_before_respawn_flap():
+    state = PlayState.__new__(PlayState)
+    state.setup_logic(two_player=False)
+    player = state.players[0]
+    player.y = state.world.LAVA_Y - 10
+    state.troll.update(config.DT, state.world, [player])
+    assert state.troll.victim is player
+
+    state._kill_player(player)
+    assert state.troll.victim is None
+
+    state._flap_requests.add(player.pid)
+    state._apply_input()
+    assert player.vy == config.FLAP_VY

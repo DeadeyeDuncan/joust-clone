@@ -10,6 +10,8 @@ class Platform:
     w: float
     id: str
     alive: bool = True
+    burning: bool = False
+    burn_timer: float = 0.0
 
 
 class World:
@@ -50,8 +52,18 @@ class World:
         if self._max_erosion_wave >= 9:
             doomed.add("p5")
         for platform in self.platforms:
-            if platform.id in doomed:
+            if platform.id in doomed and platform.alive:
                 platform.alive = False
+                platform.burning = True
+                platform.burn_timer = 0.0
+
+    def update_erosion(self, dt):
+        for platform in self.platforms:
+            if not platform.burning:
+                continue
+            platform.burn_timer += dt
+            if platform.burn_timer >= config.EROSION_BURN_S:
+                platform.burning = False
 
     def wrap_x(self, x):
         return x % config.LOGICAL_W
@@ -61,7 +73,7 @@ class World:
             return None
         for platform in self.platforms:
             if (
-                platform.alive
+                (platform.alive or platform.burning)
                 and prev_y <= platform.y <= y
                 and platform.x <= x <= platform.x + platform.w
             ):

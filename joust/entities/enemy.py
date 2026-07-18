@@ -138,5 +138,8 @@ class Enemy:
             return None
         return min(
             living,
-            key=lambda player: (player.x - self.x) ** 2 + (player.y - self.y) ** 2,
+            key=lambda player: (
+                ((player.x - self.x + config.LOGICAL_W / 2) % config.LOGICAL_W)
+                - config.LOGICAL_W / 2
+            ) ** 2 + (player.y - self.y) ** 2,
         )

@@ -249,6 +249,7 @@ class PlayState(State):
         if self.paused:
             return
 
+        self.world.update_erosion(dt)
         # Required assembly order: input, players, enemies, eggs, troll,
         # pteros, collisions, wave clear, HUD timers.
         self._apply_input()
@@ -401,6 +402,8 @@ class PlayState(State):
     def _kill_player(self, player):
         if not player.alive:
             return
+        if self.troll.victim is player:
+            self.troll.release()
         player.lives -= 1
         self.deaths_this_wave[player.pid] += 1
         audio.play("death")
@@ -426,6 +429,8 @@ class PlayState(State):
             raise ValueError(f"unknown player {pid}")
         old_score = player.score
         player.score += points
+        if not player.alive and player.lives <= 0:
+            return
         old_crossings = old_score // config.EXTRA_LIFE_EVERY
         new_crossings = player.score // config.EXTRA_LIFE_EVERY
         player.lives += new_crossings - old_crossings
@@ -439,7 +444,8 @@ class PlayState(State):
 
     def _finish_wave(self):
         for pid, points in self.wave_end_bonuses().items():
-            if points:
+            player = self._player(pid)
+            if points and player is not None and player.alive:
                 self.award(pid, points)
                 audio.play("bonus")
         for ptero in self.pteros:
@@ -476,11 +482,16 @@ class PlayState(State):
         surface.fill((10, 10, 24))
         frame = int(self.animation_s * 8)
         for platform in self.world.platforms:
-            if not platform.alive:
+            if not platform.alive and not platform.burning:
                 continue
+            platform_name = (
+                f"plat_burn_{int(platform.burn_timer * 8) % 3}"
+                if platform.burning
+                else "plat_tile"
+            )
             x = platform.x + 16
             while x <= platform.x + platform.w:
-                _blit(self.assets, surface, "plat_tile", x, platform.y + 8)
+                _blit(self.assets, surface, platform_name, x, platform.y + 8)
                 x += 32
         lava_name = f"lava_{frame % 4}"
         for x in range(16, config.LOGICAL_W + 16, 32):
@@ -628,4 +639,10 @@ def _blit(assets, surface, name, x, y, facing=1):
     if facing < 0:
         frame = pygame.transform.flip(frame, True, False)
         anchor_x = frame.get_width() - anchor_x
-    surface.blit(frame, (round(x - anchor_x), round(y - anchor_y)))
+    draw_x = round(x - anchor_x)
+    draw_y = round(y - anchor_y)
+    surface.blit(frame, (draw_x, draw_y))
+    if draw_x < 0:
+        surface.blit(frame, (draw_x + config.LOGICAL_W, draw_y))
+    elif draw_x + frame.get_width() > config.LOGICAL_W:
+        surface.blit(frame, (draw_x - config.LOGICAL_W, draw_y))

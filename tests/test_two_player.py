@@ -47,6 +47,38 @@ def test_extra_life_on_each_20k_crossing():
     assert p1.lives == lives0 + 2
 
 
+def test_eliminated_player_cannot_regain_life_from_award():
+    ps = make_2p()
+    p1 = ps.players[0]
+    p1.score = 19000
+    p1.lives = 0
+    p1.alive = False
+
+    ps.award(1, config.BONUS_TEAM)
+
+    assert p1.score == 19000 + config.BONUS_TEAM
+    assert p1.lives == 0
+
+
+def test_wave_bonus_skips_eliminated_player_and_preserves_game_over():
+    ps = make_2p()
+    p1, p2 = ps.players
+    ps.wave_n = config.TEAM_WAVE_FIRST
+    ps.deaths_this_wave = {1: 0, 2: 0}
+    ps.jousted_teammate = False
+    p1.score = 19000
+    p1.lives = 0
+    p1.alive = False
+
+    ps._finish_wave()
+
+    assert p1.score == 19000
+    assert p1.lives == 0
+    p2.lives = 0
+    p2.alive = False
+    assert ps.is_game_over()
+
+
 def test_attract_start_selects_player_count_from_pad_index():
     state = AttractState.__new__(AttractState)
     selected = []

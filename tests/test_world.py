@@ -40,3 +40,27 @@ def test_grab_band():
     w = World()
     assert w.in_grab_band(w.LAVA_Y - 5)
     assert not w.in_grab_band(w.LAVA_Y - config.TROLL_GRAB_BAND - 1)
+
+
+def test_erosion_burns_before_platform_stops_colliding():
+    world = World()
+    platform = next(item for item in world.platforms if item.id == "p8")
+
+    world.apply_erosion(4)
+
+    assert platform.burning
+    assert world.ground_under(
+        platform.x + platform.w / 2,
+        platform.y - 1,
+        platform.y + 1,
+    ) is platform
+
+    world.update_erosion(config.EROSION_BURN_S + config.DT)
+
+    assert not platform.burning
+    assert not platform.alive
+    assert world.ground_under(
+        platform.x + platform.w / 2,
+        platform.y - 1,
+        platform.y + 1,
+    ) is None

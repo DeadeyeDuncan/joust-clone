@@ -1,6 +1,8 @@
 import json, subprocess, sys, hashlib
 from pathlib import Path
 
+from tools import gen_sprites
+
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "assets" / "sprites"
 
@@ -38,6 +40,8 @@ def test_generator_emits_complete_manifest(tmp_path):
     for p in (1, 2):
         assert m["frames"][f"p{p}_stand"]["lance"] is not None
     assert m["frames"]["egg_0"]["lance"] is None
+    for tier in (1, 2, 3):
+        assert m["frames"][f"buzzard{tier}_flap_0"]["lance"] is None
 
 def test_generator_deterministic():
     run_gen()
@@ -45,3 +49,21 @@ def test_generator_deterministic():
     run_gen()
     h2 = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in OUT.iterdir()}
     assert h1 == h2
+
+
+def test_buzzard_riders_use_tier_accents_and_free_birds_are_bare():
+    accents = set(gen_sprites.ENEMY_RIDER_ACCENTS.values())
+    for tier in (1, 2, 3):
+        accent = gen_sprites.ENEMY_RIDER_ACCENTS[tier]
+        for phase in range(3):
+            assert accent in gen_sprites.buzzard_frame(
+                tier, "flap", phase
+            ).get_flattened_data()
+        assert accent in gen_sprites.buzzard_frame(
+            tier, "glide"
+        ).get_flattened_data()
+
+    for phase in range(2):
+        assert accents.isdisjoint(
+            set(gen_sprites.free_buzzard_frame(phase).get_flattened_data())
+        )

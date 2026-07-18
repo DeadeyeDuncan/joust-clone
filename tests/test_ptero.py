@@ -30,7 +30,9 @@ def test_director_timers():
 
 def test_ptero_wave_spawns_three_at_start():
     d = PteroDirector(wave_is_ptero=True)
-    assert len(d.update(config.DT, 0.0, enemies_left=0)) == 3
+    spawned = d.update(config.DT, 0.0, enemies_left=0)
+    assert len(spawned) == 3
+    assert len({(ptero.y, ptero._phase) for ptero in spawned}) == 3
 
 def test_lance_kill_only_in_open_mouth():
     w = World()

@@ -16,6 +16,15 @@ def test_corrupt_resets(tmp_path, monkeypatch):
     assert len(persistence.load_scores()) == 10   # defaults
 
 
+def test_overflow_score_resets_to_defaults(tmp_path, monkeypatch):
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    directory = tmp_path / "JoustClone"
+    directory.mkdir()
+    (directory / "highscores.json").write_text('[["AAA", 1e309]]')
+
+    assert persistence.load_scores() == persistence.DEFAULT_SCORES
+
+
 def test_atomic_no_tmp_left(tmp_path, monkeypatch):
     monkeypatch.setenv("APPDATA", str(tmp_path))
     persistence.save_scores([("AAA", 1)])

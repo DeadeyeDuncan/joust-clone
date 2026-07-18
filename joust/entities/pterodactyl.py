@@ -3,8 +3,12 @@ import math
 from joust import config
 
 
+_WAVE_SPAWN_Y_OFFSETS = (-48.0, 0.0, 48.0)
+_WAVE_SPAWN_PHASES = (0.0, 1.0 / 3.0, 2.0 / 3.0)
+
+
 class Ptero:
-    def __init__(self, side):
+    def __init__(self, side, y=None, phase=0.0):
         if side not in (-1, 1):
             raise ValueError("side must be -1 or 1")
 
@@ -14,11 +18,11 @@ class Ptero:
             if side == -1
             else config.LOGICAL_W + config.PTERO_W / 2
         )
-        self.y = config.LOGICAL_H / 2
+        self.y = config.LOGICAL_H / 2 if y is None else float(y)
         self.facing = -side
         self.alive = True
         self.mouth_open = False
-        self._phase = 0.0
+        self._phase = float(phase) % 1.0
 
     def update(self, dt, world, target):
         if not self.alive:
@@ -85,7 +89,14 @@ class PteroDirector:
             if self._started:
                 return []
             self._started = True
-            spawned = [Ptero(-1), Ptero(1), Ptero(-1)]
+            spawned = [
+                Ptero(
+                    side,
+                    config.LOGICAL_H / 2 + _WAVE_SPAWN_Y_OFFSETS[index],
+                    _WAVE_SPAWN_PHASES[index],
+                )
+                for index, side in enumerate((-1, 1, -1))
+            ]
             self._active.extend(spawned)
             return spawned
 

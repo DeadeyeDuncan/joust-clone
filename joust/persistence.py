@@ -21,8 +21,10 @@ def load_scores():
         rows = [(str(initials)[:3].upper(), int(score)) for initials, score in data]
         if not rows:
             raise ValueError("empty score table")
+        if any(score < 0 or score > 9_999_999 for _, score in rows):
+            raise ValueError("score outside valid range")
         return rows[:10]
-    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+    except (OSError, TypeError, ValueError, OverflowError, json.JSONDecodeError):
         return list(DEFAULT_SCORES)
 
 

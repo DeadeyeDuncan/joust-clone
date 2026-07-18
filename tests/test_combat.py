@@ -54,3 +54,14 @@ def test_bounce_repels():
 def test_collide_aabb():
     assert combat.collide(Stub(100, 100, 0), Stub(130, 100, 0))
     assert not combat.collide(Stub(100, 100, 0), Stub(200, 100, 0))
+
+
+def test_collide_uses_wrapped_horizontal_distance():
+    assert combat.collide(Stub(636, 100, 0), Stub(4, 100, 0))
+    assert not combat.collide(Stub(320, 100, 0), Stub(560, 100, 0))
+
+
+def test_bounce_repels_across_wrap_seam():
+    left, right = Stub(4, 100, 80), Stub(636, 100, 80)
+    combat.bounce(left, right)
+    assert left.vx > 0 > right.vx
