@@ -85,7 +85,12 @@ class Enemy:
             self._dir = 0
             return
 
-        self._dir = _sign(target.x - self.x)
+        dx = (
+            (target.x - self.x + config.LOGICAL_W / 2) % config.LOGICAL_W
+        ) - config.LOGICAL_W / 2
+        self._dir = _sign(dx)
+        if self._dir * self.vx < 0:
+            self.vx = -self.vx
         if self._dir:
             self.facing = self._dir
 
@@ -95,19 +100,19 @@ class Enemy:
                 self._flap()
             return
 
-        horizontal_distance = abs(target.x - self.x)
+        horizontal_distance = abs(dx)
+        horizon = config.AI_FLAP_COOLDOWN_S
+        projected_y = (
+            self.y
+            + self.vy * horizon
+            + 0.5 * config.GRAVITY * horizon * horizon
+        )
         if horizontal_distance >= config.LORD_DIVE_RANGE:
-            horizon = config.AI_FLAP_COOLDOWN_S
-            projected_y = (
-                self.y
-                + self.vy * horizon
-                + 0.5 * config.GRAVITY * horizon * horizon
-            )
             cruise_y = target.y - config.LORD_CRUISE_ABOVE
             if projected_y > cruise_y:
                 self._flap()
         else:
-            if self.y > target.y - 16.0:
+            if projected_y > target.y - 16.0:
                 self._flap()
             else:
                 self.state = "dive"
@@ -116,7 +121,10 @@ class Enemy:
         self._dir = self._rng.choice((-1, 0, 1))
         if self._dir:
             self.facing = self._dir
-        if self.y > 220 or self._rng.random() < 0.45:
+        if (
+            self.y > config.BOUNDER_RECOVER_Y
+            or self._rng.random() < config.BOUNDER_FLAP_CHANCE
+        ):
             self._flap()
 
     def _flap(self):

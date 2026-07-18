@@ -51,3 +51,16 @@ def test_shadow_lord_faster_and_higher():
     e = Enemy(3, 100, 200, random.Random(1))
     run(e, w, [P(540, 300)], 3)
     assert e.y < 300 - 30  # cruises above target
+
+
+def test_targeting_uses_wrapped_distance():
+    w = World()
+    e = Enemy(2, 620, 120, random.Random(1))
+    p = P(20, 120)
+    d0 = abs(((p.x - e.x + config.LOGICAL_W / 2) % config.LOGICAL_W) - config.LOGICAL_W / 2)
+    run(e, w, [p], 2)
+    distance = abs(
+        ((p.x - e.x + config.LOGICAL_W / 2) % config.LOGICAL_W)
+        - config.LOGICAL_W / 2
+    )
+    assert distance < d0
