@@ -55,11 +55,12 @@ class AttractState(State):
         self.assets = assets
         self.scores = persistence.load_scores()
         self.joysticks = []
-        if pygame.joystick.get_init():
-            for index in range(min(2, pygame.joystick.get_count())):
-                joystick = pygame.joystick.Joystick(index)
-                joystick.init()
-                self.joysticks.append(joystick)
+        if not pygame.joystick.get_init():
+            pygame.joystick.init()
+        for index in range(min(2, pygame.joystick.get_count())):
+            joystick = pygame.joystick.Joystick(index)
+            joystick.init()
+            self.joysticks.append(joystick)
 
     def _start(self, two_player):
         self.machine.switch(
@@ -84,8 +85,12 @@ class AttractState(State):
                 self._start(True)
             elif event.key == pygame.K_F11:
                 self.loop.toggle_fullscreen()
-        elif event.type == pygame.JOYBUTTONDOWN and event.button in (6, 7):
-            self._start(len(self.joysticks) > 1)
+        elif (
+            event.type == pygame.JOYBUTTONDOWN
+            and event.button in (6, 7)
+            and event.joy < len(self.joysticks)
+        ):
+            self._start(event.joy == 1)
 
     def draw(self, surface):
         surface.fill((10, 10, 24))
@@ -223,7 +228,9 @@ class PlayState(State):
             if abs(x) > config.PAD_DEADZONE:
                 directions[index + 1] = 1 if x > 0 else -1
             elif joystick.get_numhats():
-                directions[index + 1] = joystick.get_hat(0)[0]
+                hat_x = joystick.get_hat(0)[0]
+                if hat_x:
+                    directions[index + 1] = hat_x
         for player in self.players:
             if player.alive:
                 player.set_dir(directions[player.pid])
@@ -533,11 +540,16 @@ class GameOverState(State):
             if event.key == pygame.K_ESCAPE:
                 self.machine.switch(AttractState(self.loop, self.machine, self.assets))
             elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                scores = persistence.load_scores()
-                if len(scores) < 10 or self.score > scores[-1][1]:
-                    self.machine.switch(HighScoreEntryState(self.loop, self.machine, self.assets, self.score))
-                else:
-                    self.machine.switch(AttractState(self.loop, self.machine, self.assets))
+                self._continue()
+        elif event.type == pygame.JOYBUTTONDOWN and event.button in (6, 7):
+            self._continue()
+
+    def _continue(self):
+        scores = persistence.load_scores()
+        if len(scores) < 10 or self.score > scores[-1][1]:
+            self.machine.switch(HighScoreEntryState(self.loop, self.machine, self.assets, self.score))
+        else:
+            self.machine.switch(AttractState(self.loop, self.machine, self.assets))
 
     def draw(self, surface):
         surface.fill((10, 10, 24))
@@ -562,24 +574,44 @@ class HighScoreEntryState(State):
         if event.type == pygame.QUIT:
             self.loop.running = False
             return
-        if event.type != pygame.KEYDOWN:
-            return
-        if event.key in (pygame.K_UP, pygame.K_w):
-            self.initials[self.position] = (self.initials[self.position] + 1) % len(self.LETTERS)
-        elif event.key in (pygame.K_DOWN, pygame.K_s):
-            self.initials[self.position] = (self.initials[self.position] - 1) % len(self.LETTERS)
-        elif event.key in (pygame.K_LEFT, pygame.K_a):
-            self.position = max(0, self.position - 1)
-        elif event.key in (pygame.K_RIGHT, pygame.K_d):
-            self.position = min(2, self.position + 1)
-        elif event.key == pygame.K_ESCAPE:
-            self.machine.switch(AttractState(self.loop, self.machine, self.assets))
-        elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
-            name = "".join(self.LETTERS[index] for index in self.initials)
-            rows = persistence.load_scores() + [(name, self.score)]
-            rows.sort(key=lambda row: row[1], reverse=True)
-            persistence.save_scores(rows[:10])
-            self.machine.switch(AttractState(self.loop, self.machine, self.assets))
+        if event.type == pygame.KEYDOWN:
+            if event.key in (pygame.K_UP, pygame.K_w):
+                self._move(0, 1)
+            elif event.key in (pygame.K_DOWN, pygame.K_s):
+                self._move(0, -1)
+            elif event.key in (pygame.K_LEFT, pygame.K_a):
+                self._move(-1, 0)
+            elif event.key in (pygame.K_RIGHT, pygame.K_d):
+                self._move(1, 0)
+            elif event.key == pygame.K_ESCAPE:
+                self.machine.switch(AttractState(self.loop, self.machine, self.assets))
+            elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                self._submit()
+        elif event.type == pygame.JOYHATMOTION and event.hat == 0:
+            self._move(*event.value)
+        elif event.type == pygame.JOYAXISMOTION and event.axis in (0, 1):
+            if abs(event.value) > config.PAD_DEADZONE:
+                if event.axis == 0:
+                    self._move(1 if event.value > 0 else -1, 0)
+                else:
+                    self._move(0, -1 if event.value > 0 else 1)
+        elif event.type == pygame.JOYBUTTONDOWN and event.button == 0:
+            self._submit()
+
+    def _move(self, dx, dy):
+        if dy:
+            self.initials[self.position] = (
+                self.initials[self.position] + (1 if dy > 0 else -1)
+            ) % len(self.LETTERS)
+        if dx:
+            self.position = max(0, min(2, self.position + (1 if dx > 0 else -1)))
+
+    def _submit(self):
+        name = "".join(self.LETTERS[index] for index in self.initials)
+        rows = persistence.load_scores() + [(name, self.score)]
+        rows.sort(key=lambda row: row[1], reverse=True)
+        persistence.save_scores(rows[:10])
+        self.machine.switch(AttractState(self.loop, self.machine, self.assets))
 
     def draw(self, surface):
         surface.fill((10, 10, 24))
