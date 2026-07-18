@@ -4,10 +4,10 @@ from joust import config
 
 
 _SCHEDULE = (
-    ("survival", 5, 5),
-    ("egg", 8, 5),
-    ("ptero", 11, 7),
-    ("team", 6, 5),
+    ("survival", config.SURVIVAL_WAVE_FIRST, config.SURVIVAL_WAVE_STEP),
+    ("egg", config.EGG_WAVE_FIRST, config.EGG_WAVE_STEP),
+    ("ptero", config.PTERO_WAVE_FIRST, config.PTERO_WAVE_STEP),
+    ("team", config.TEAM_WAVE_FIRST, config.TEAM_WAVE_STEP),
 )
 
 
@@ -43,19 +43,24 @@ def composition(n, rng):
     if n == 3:
         return [1, 1, 2, 2]
 
-    count = rng.randint(4, 6)
+    count = rng.randint(config.WAVE_GROUP_MIN, config.WAVE_GROUP_MAX)
     bounder_count = rng.randint(0, count // 2)
     hunter_count = count - bounder_count
-    lord_count = rng.randint(1, 2) if n >= 7 else 0
+    lord_count = (
+        rng.randint(config.LORD_COUNT_MIN, config.LORD_COUNT_MAX)
+        if n >= config.LORD_WAVE_THRESHOLD
+        else 0
+    )
     return [1] * bounder_count + [2] * hunter_count + [3] * lord_count
 
 
 def egg_wave_layout(world):
     """Place six eggs just above the first six living platforms."""
     living = [platform for platform in world.platforms if platform.alive]
+    # Relies on erosion killing at most 4 of 10 platforms, leaving EGG_WAVE_COUNT alive.
     return [
-        (platform.x + platform.w / 2, platform.y - 5)
-        for platform in living[:6]
+        (platform.x + platform.w / 2, platform.y - config.EGG_WAVE_Y_OFFSET)
+        for platform in living[:config.EGG_WAVE_COUNT]
     ]
 
 
