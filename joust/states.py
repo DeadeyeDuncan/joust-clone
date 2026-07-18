@@ -79,9 +79,9 @@ class AttractState(State):
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 self.loop.running = False
-            elif event.key == pygame.K_1:
+            elif event.key in (pygame.K_1, pygame.K_KP1):
                 self._start(False)
-            elif event.key == pygame.K_2:
+            elif event.key in (pygame.K_2, pygame.K_KP2):
                 self._start(True)
             elif event.key == pygame.K_F11:
                 self.loop.toggle_fullscreen()

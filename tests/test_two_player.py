@@ -91,6 +91,16 @@ def test_attract_start_selects_player_count_from_pad_index():
     assert selected == [False, True]
 
 
+def test_attract_numpad_one_starts_one_player_game():
+    state = AttractState.__new__(AttractState)
+    selected = []
+    state._start = selected.append
+
+    state.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_KP1))
+
+    assert selected == [False]
+
+
 def test_attract_ignores_pad_not_enumerated_on_entry():
     state = AttractState.__new__(AttractState)
     selected = []
