@@ -182,8 +182,27 @@ class PlayState(State):
         for chain in self.egg_chains.values():
             chain.reset()
         self.enemies = []
+        spawn_pads = list(self.world.spawn_pads)
+        living_players = [player for player in self.players if player.alive]
+        if living_players:
+            def nearest_player_distance(pad):
+                return min(
+                    abs(
+                        ((pad[0] - player.x + config.LOGICAL_W / 2) % config.LOGICAL_W)
+                        - config.LOGICAL_W / 2
+                    )
+                    for player in living_players
+                )
+
+            spawn_pads.sort(key=nearest_player_distance, reverse=True)
+            distant_pads = [
+                pad
+                for pad in spawn_pads
+                if nearest_player_distance(pad) >= config.ENEMY_SPAWN_MIN_DIST
+            ]
+            spawn_pads = distant_pads or spawn_pads[:1]
         for index, tier in enumerate(plan["buzzards"]):
-            x, y = self.world.spawn_pads[index % len(self.world.spawn_pads)]
+            x, y = spawn_pads[index % len(spawn_pads)]
             self.enemies.append(self._new_enemy(tier, x, y))
         self.eggs = [Egg(1, x, y, 0.0, 0.0) for x, y in plan["eggs"]]
         self.pteros = []

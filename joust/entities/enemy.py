@@ -77,6 +77,10 @@ class Enemy:
             self.state = "shimmer"
 
     def _decide(self, players):
+        if self.y > config.AI_LAVA_AVOID_Y:
+            self._flap()
+            return
+
         if self.tier == 1:
             self._bounder_decision()
             return

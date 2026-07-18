@@ -43,6 +43,7 @@ def test_skid_brake_state_on_reversal():
     w = World()
     plat = w.platforms[7]
     p = Player(1, plat.x + plat.w / 2, plat.y)
+    steps(p, w, int(config.RESPAWN_INVULN_MIN_S / config.DT) + 1)
     p.grounded = True
     p.vx = 150
     p.set_dir(-1)
@@ -78,11 +79,24 @@ def test_spawn_invulnerability_clears_on_move_or_timeout():
     w = World()
     p = Player(1, 320, 100)
     assert p.invulnerable
+    steps(p, w, int(config.RESPAWN_INVULN_MIN_S / config.DT) + 1)
     p.set_dir(1)
     assert not p.invulnerable
     q = Player(1, 320, 100)
     steps(q, w, int(config.SPAWN_INVULN_S / config.DT) + 2)
     assert not q.invulnerable
+
+
+def test_flap_only_clears_spawn_invulnerability_after_floor():
+    w = World()
+    during_floor = Player(1, 320, 100)
+    during_floor.flap()
+    assert during_floor.invulnerable
+
+    after_floor = Player(1, 320, 100)
+    steps(after_floor, w, int(config.RESPAWN_INVULN_MIN_S / config.DT) + 1)
+    after_floor.flap()
+    assert not after_floor.invulnerable
 
 
 def test_shimmer_state_persists_while_invulnerable():
@@ -92,6 +106,7 @@ def test_shimmer_state_persists_while_invulnerable():
     assert p.invulnerable
     assert p.state == "shimmer"
 
+    steps(p, w, int(config.RESPAWN_INVULN_MIN_S / config.DT) + 1)
     p.set_dir(1)
     p.update(config.DT, w)
     assert p.state != "shimmer"

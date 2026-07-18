@@ -72,3 +72,12 @@ def test_nearest_player_uses_wrapped_horizontal_distance():
     raw_near = P(500, 120)
 
     assert enemy._nearest_living_player([raw_near, across_seam]) is across_seam
+
+
+def test_enemy_flaps_out_of_lava_band():
+    world = World()
+    enemy = Enemy(2, 320, 330, random.Random(42))
+
+    run(enemy, world, [], 2)
+
+    assert enemy.y < config.AI_LAVA_AVOID_Y

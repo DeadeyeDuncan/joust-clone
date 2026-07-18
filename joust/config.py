@@ -62,6 +62,8 @@ PTERO_SPEED = 140.0
 # spawn
 SPAWN_SHIMMER_S = 1.0
 SPAWN_INVULN_S = 3.0     # invulnerability cap; cleared early by first move/flap/AI action
+RESPAWN_INVULN_MIN_S = 1.0
+ENEMY_SPAWN_MIN_DIST = 140.0
 
 # combat bounce
 BOUNCE_MIN_VX = 60.0
@@ -69,6 +71,7 @@ BOUNCE_NUDGE_VY = -30.0
 
 # enemy AI
 AI_FLAP_COOLDOWN_S = 0.25
+AI_LAVA_AVOID_Y = 284.0
 BOUNDER_RECOVER_Y = 220
 BOUNDER_FLAP_CHANCE = 0.45
 LORD_SPEED_MULT = 1.35

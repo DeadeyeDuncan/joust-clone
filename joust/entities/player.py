@@ -54,7 +54,8 @@ class Player:
         self.vy = config.FLAP_VY
         self.grounded = False
         self._platform = None
-        self._invulnerable = False
+        if self._age >= config.RESPAWN_INVULN_MIN_S:
+            self._invulnerable = False
         self.state = "flap"
 
     def set_dir(self, direction):
@@ -63,7 +64,8 @@ class Player:
         self._dir = direction
         if direction:
             self.facing = direction
-            self._invulnerable = False
+            if self._age >= config.RESPAWN_INVULN_MIN_S:
+                self._invulnerable = False
 
     def update(self, dt, world):
         self._age += dt
