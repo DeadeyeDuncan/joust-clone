@@ -44,6 +44,53 @@ in this document was checked from PowerShell.
 
 ## F2 — URP activation
 
+**Setup.** `com.unity.render-pipelines.universal` pinned to `17.5.0`, the version
+this editor bundles, read from
+`Editor/Data/Resources/PackageManager/Editor/manifest.json` rather than guessed.
+`Assets/Editor/UrpSetup.cs` creates the renderer and pipeline assets and assigns
+them.
+
+**Command**
+
+```
+"G:/UnityEditors/6000.5.10f1/Editor/Unity.exe" -batchmode -quit -nographics \
+  -projectPath "I:/Joust/unity/JoustUnity" \
+  -executeMethod Joust.Editor.UrpSetup.ConfigureUrp \
+  -logFile "I:/Joust/unity/artifacts/urp-setup.log"
+```
+
+**Observed:** exit code 0, zero `error CS` lines, and the log line
+
+```
+URP configured. defaultRenderPipeline=JoustURP (UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset)
+```
+
+**The activation gate, checked four ways:**
+
+| Check | Result |
+|---|---|
+| `GraphicsSettings.asset` before | `m_CustomRenderPipeline: {fileID: 0}` — Built-in |
+| `GraphicsSettings.asset` after | `{fileID: 11400000, guid: 3ef9610330c50e4438a862cd96b190fd, type: 2}` |
+| guid matches `JoustURP.asset.meta` | yes — `guid: 3ef9610330c50e4438a862cd96b190fd` |
+| `QualitySettings.asset` | all six levels carry `customRenderPipeline` with the same guid |
+| URP shader lines in log | 21 |
+| Built-in deferred shader lines in log | 0 |
+
+**Verdict: HELD.** The pipeline is genuinely active, not merely installed. The
+before-and-after on `m_CustomRenderPipeline` is the evidence that matters: the
+package alone left it at `fileID: 0`.
+
+**API note.** `UniversalRenderPipelineAsset.Create(UniversalRendererData)` is
+public and works in URP 17.5.0. The planned fallback — `CreateInstance` plus a
+`SerializedObject` write to `m_RendererDataList` — was not needed.
+
+**Caveat on the shader-name check.** The 21 URP shader lines in an editor setup
+log are weaker evidence than they look; the editor loads URP shaders as soon as
+the package resolves, whether or not the pipeline is active. The shader-name
+check is only decisive in a *player build* log, where the built player embeds one
+shader family or the other. F9 carries the decisive form of this check. The
+settings-asset comparison above is what actually proves activation here.
+
 ## F3 — Headless EditMode tests
 
 ## F4 — Headless PlayMode tests
