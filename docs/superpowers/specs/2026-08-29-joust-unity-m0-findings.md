@@ -93,6 +93,71 @@ settings-asset comparison above is what actually proves activation here.
 
 ## F3 — Headless EditMode tests
 
+**Setup.** `com.unity.test-framework@1.7.0` added to the manifest (see F1 — it is
+not in the default project). `Joust.Runtime` and `Joust.Tests.EditMode` assembly
+definitions created, seven tests written against
+`Joust.Combat.JoustResolver.Resolve`.
+
+**Command**
+
+```
+powershell -ExecutionPolicy Bypass -File unity/tools/run-unity-tests.ps1 -Platform EditMode
+```
+
+**Red then green.** Before `JoustResolver.cs` existed the run failed with
+`error CS0234: The type or namespace name 'Combat' does not exist in the
+namespace 'Joust'`. After the implementation landed:
+
+```
+platform=EditMode total=7 passed=7 failed=0 result=Passed unityExit=0
+PASS
+```
+
+Test execution time was 0.022 seconds for the seven cases. The Unity startup and
+domain reload around it dominate wall-clock, but the suite itself is effectively
+free, so EditMode tests can gate every M1 change.
+
+**Verdict: HELD, but only after the runner was hardened three times.** Headless
+EditMode testing works. The naive invocation from the plan did not.
+
+### Three runner hazards, each found by execution
+
+**1. `-runTests` exits 0 when compilation fails.** The first red run printed
+`Aborting batchmode due to failure: Scripts have compiler errors` to stdout,
+wrote no results XML, and still exited 0. A gate keyed on the process exit code
+would have reported a broken build as passing. The exit code is not a usable
+signal.
+
+**2. Stale artifacts are read as the current result.** The first hardened wrapper
+deleted the stale results XML but not the stale log, then gated on a log grep.
+A genuinely passing run was reported as failing, using the *previous* run's
+compiler errors. The same defect in the other direction would report a failing
+run as passing.
+
+**3. `& $editor ...` does not reliably block.** One invocation returned with
+`$LASTEXITCODE` empty and no artifacts on disk; both artifacts appeared a minute
+later, written by the Unity process the wrapper had already stopped waiting for.
+The wrapper was reading a run that was still in progress.
+
+### The gate that survived
+
+`unity/tools/run-unity-tests.ps1` now:
+
+- deletes both the stale XML and the stale log before running;
+- launches via `Start-Process -Wait -PassThru`, which blocks until the editor
+  process exits and returns a real exit code;
+- treats the **results XML as authoritative** — it must exist, report
+  `total > 0`, and report `failed == 0`;
+- reads the log only to explain a failure, never to decide one;
+- returns distinct exit codes so a failure mode is identifiable without opening
+  anything: `2` compile errors, `3` no results file, `4` zero tests, `5` test
+  failures.
+
+**Consequence for M1.** Every milestone gate must call this wrapper and check its
+exit code, never invoke `Unity.exe -runTests` directly. Any CI or hook that
+shells out to Unity and trusts the process exit code is broken by construction on
+this editor version.
+
 ## F4 — Headless PlayMode tests
 
 ## F5 — Arcade flight feel
