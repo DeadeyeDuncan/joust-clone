@@ -273,6 +273,34 @@ separate project copy.
 
 ## F7 — Screen wrap
 
+**What was built.** `ScreenWrapPrototype` teleports an entity across the arena
+bounds and maintains a ghost copy near the seam so the crossing is not visible
+as a pop. The wrap arithmetic was pulled out as a pure static method,
+`WrapX(float x, float halfWidth)`, so it is testable without physics or a scene.
+
+**Observed**
+
+```
+platform=EditMode total=16 passed=16 failed=0 result=Passed unityExit=0
+```
+
+Six of those tests cover wrap: positions inside bounds unchanged, both edge
+crossings, idempotency (wrapping an already-wrapped value is a no-op), a
+position many arena widths away still landing inside bounds, and a zero-width
+arena not dividing by zero.
+
+**Verdict: HELD for the arithmetic; the seam visual is still pending.** The
+teleport is proven correct by test. Whether the ghost genuinely hides the seam
+is a visual judgement that no assertion captures, and is folded into the same
+play session as F5.
+
+**Design note carried into M1.** Extracting `WrapX` as a pure function was worth
+doing: it turned an untestable `LateUpdate` behaviour into six fast EditMode
+tests. The same split — pure arithmetic beside a thin MonoBehaviour that applies
+it — is the pattern M1 should follow for movement and combat, and it is what
+makes an idiomatic Unity build testable without resorting to slow PlayMode tests
+for everything.
+
 ## F8 — Asset pack import and animation
 
 ### Screenshot capture capability (built alongside)
