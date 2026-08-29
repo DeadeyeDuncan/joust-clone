@@ -32,6 +32,12 @@ namespace Joust.Movement
         /// <summary>Facing as -1 or 1, held through a stop so the rider does not snap forward.</summary>
         public int Facing { get; private set; } = 1;
 
+        /// <summary>
+        /// Per-tier scaling on thrust and top speed. Stronger buzzards fly the
+        /// same way, only faster, so one motor serves every tier.
+        /// </summary>
+        public float SpeedMultiplier { get; set; } = 1f;
+
         public void Configure(TuningProfile tuning) => profile = tuning;
 
         public void SetThrust(float direction)
@@ -77,7 +83,7 @@ namespace Joust.Movement
 
             if (Mathf.Abs(_thrust) > 0.01f)
             {
-                velocity.x += _thrust * profile.thrustAcceleration * Time.fixedDeltaTime;
+                velocity.x += _thrust * profile.thrustAcceleration * SpeedMultiplier * Time.fixedDeltaTime;
             }
             else
             {
@@ -85,8 +91,8 @@ namespace Joust.Movement
                 velocity.x = Mathf.MoveTowards(velocity.x, 0f, decay * Time.fixedDeltaTime);
             }
 
-            velocity.x = Mathf.Clamp(
-                velocity.x, -profile.maxHorizontalSpeed, profile.maxHorizontalSpeed);
+            var topSpeed = profile.maxHorizontalSpeed * SpeedMultiplier;
+            velocity.x = Mathf.Clamp(velocity.x, -topSpeed, topSpeed);
 
             if (!Grounded)
             {

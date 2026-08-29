@@ -27,6 +27,9 @@ namespace Joust.Flow
 
         public void AwardKill(EnemyTier tier) => Add(ScoreService.PointsFor(tier));
 
+        /// <summary>Wave bonuses: survival, and the team bonus in two-player.</summary>
+        public void AwardBonus(int points) => Add(points);
+
         /// <summary>
         /// Scores the next egg in the chain. The chain escalates while the player
         /// keeps collecting and resets on death.

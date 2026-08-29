@@ -16,6 +16,7 @@ namespace Joust.Enemies
     {
         [SerializeField] private Transform target;
         [SerializeField] private float decisionInterval = 0.25f;
+        [SerializeField] private AiProfile profile = AiProfile.Wanderer;
 
         private RiderMotor _motor;
         private float _nextDecision;
@@ -25,13 +26,41 @@ namespace Joust.Enemies
 
         public void Configure(Transform pursue) => target = pursue;
 
+        public void ConfigureProfile(AiProfile aiProfile) => profile = aiProfile;
+
+        /// <summary>
+        /// Finds the player when no target was injected. Hatched riders are
+        /// created mid-wave with nothing to chase yet, and a buzzard with no
+        /// target simply drifts, which reads as a broken enemy.
+        /// </summary>
+        private void AcquireTarget()
+        {
+            foreach (var rider in FindObjectsByType<Joust.Combat.Rider>(FindObjectsSortMode.None))
+            {
+                if (rider.IsPlayer && rider.Mounted)
+                {
+                    target = rider.transform;
+                    return;
+                }
+            }
+        }
+
         private void Awake() => _motor = GetComponent<RiderMotor>();
 
         private void Update()
         {
-            if (target == null || _motor == null || Time.time < _nextDecision)
+            if (_motor == null || Time.time < _nextDecision)
             {
                 return;
+            }
+
+            if (target == null)
+            {
+                AcquireTarget();
+                if (target == null)
+                {
+                    return;
+                }
             }
 
             // Decisions are spaced rather than per-frame, so a bounder commits to
