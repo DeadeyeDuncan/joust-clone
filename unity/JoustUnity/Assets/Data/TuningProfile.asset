@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bc1e895bf6098784cb9d36b8283824a9, type: 3}
   m_Name: TuningProfile
   m_EditorClassIdentifier: Joust.Runtime::Joust.Core.TuningProfile
-  gravity: 24
-  flapImpulse: 9
-  thrustAcceleration: 17
+  gravity: 36
+  flapImpulse: 8.5
+  thrustAcceleration: 20
   maxHorizontalSpeed: 12
-  airDrag: 0.6
+  airDrag: 1.4
   groundSkidDeceleration: 27
   tieBandUnits: 0.2
   bounceSpeed: 3

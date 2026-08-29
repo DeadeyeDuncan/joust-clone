@@ -6,28 +6,30 @@ namespace Joust.Core
     /// Every number that decides how the game feels, in one inspector-editable
     /// asset so it can be tuned during play rather than recompiled.
     ///
-    /// The defaults are the provisional baseline accepted at the end of M0: they
-    /// are flyable, not yet judged. M1's definition of done is the user accepting
-    /// tuned values here, with an enemy to fight and a death to avoid.
+    /// These values were play-tested and accepted on 2026-08-29, after the M0
+    /// baseline was judged too floaty: gravity was raised from 24 to 36 and the
+    /// flap lowered from 9 to 8.5, which shortens the arc per flap from roughly
+    /// 1.7 units to 1.0 and forces the constant flapping the arcade runs on.
+    /// Air drag went from 0.6 to 1.4 so a glide bleeds speed instead of coasting.
     /// </summary>
     [CreateAssetMenu(menuName = "Joust/Tuning Profile", fileName = "TuningProfile")]
     public class TuningProfile : ScriptableObject
     {
         [Header("Flight")]
         [Tooltip("Downward acceleration in units per second squared.")]
-        public float gravity = 24f;
+        public float gravity = 36f;
 
         [Tooltip("Vertical velocity a flap SETS, not adds. Setting is what keeps repeated flaps controllable.")]
-        public float flapImpulse = 9f;
+        public float flapImpulse = 8.5f;
 
         [Tooltip("Horizontal acceleration while thrusting, in units per second squared.")]
-        public float thrustAcceleration = 17f;
+        public float thrustAcceleration = 20f;
 
         [Tooltip("Horizontal speed cap in units per second.")]
         public float maxHorizontalSpeed = 12f;
 
         [Tooltip("Horizontal decay per second while airborne and not thrusting.")]
-        public float airDrag = 0.6f;
+        public float airDrag = 1.4f;
 
         [Header("Ground")]
         [Tooltip("Horizontal decay per second while grounded and not thrusting.")]
