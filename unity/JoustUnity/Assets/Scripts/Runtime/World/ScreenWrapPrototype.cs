@@ -1,4 +1,4 @@
-// SPIKE: throwaway, not carried into M1.
+using System;
 using UnityEngine;
 
 namespace Joust.World
@@ -41,28 +41,50 @@ namespace Joust.World
 
         private void Start()
         {
-            var ghost = Instantiate(gameObject, transform.position, transform.rotation);
-            ghost.name = $"{name}_ghost";
-
-            foreach (var behaviour in ghost.GetComponents<MonoBehaviour>())
-            {
-                Destroy(behaviour);
-            }
-
-            var body = ghost.GetComponent<Rigidbody>();
-            if (body != null)
-            {
-                Destroy(body);
-            }
-
-            var collider = ghost.GetComponent<Collider>();
-            if (collider != null)
-            {
-                Destroy(collider);
-            }
-
-            _ghost = ghost.transform;
+            _ghost = BuildVisualGhost(transform);
             _ghost.gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// Builds a visuals-only double by copying meshes, rather than cloning
+        /// the rider and stripping it.
+        ///
+        /// Cloning and stripping does not work: Destroy is deferred to the end of
+        /// the frame, so ordering the removals has no effect and Unity still
+        /// tries to remove a component another one requires. Copying meshes also
+        /// guarantees the ghost has no colliders, and a ghost with colliders can
+        /// joust, be jousted and land on platforms, which turns a cosmetic double
+        /// into a second player.
+        /// </summary>
+        private static Transform BuildVisualGhost(Transform source)
+        {
+            var ghost = new GameObject($"{source.name}_ghost").transform;
+            ghost.position = source.position;
+            ghost.rotation = source.rotation;
+            ghost.localScale = source.localScale;
+
+            foreach (var renderer in source.GetComponentsInChildren<MeshRenderer>())
+            {
+                var filter = renderer.GetComponent<MeshFilter>();
+                if (filter == null || filter.sharedMesh == null)
+                {
+                    continue;
+                }
+
+                var piece = new GameObject(renderer.name);
+                piece.transform.SetParent(ghost, false);
+
+                // Copy the world-relative placement, so nested model hierarchies
+                // land in the right spot without replicating their parents.
+                piece.transform.position = renderer.transform.position;
+                piece.transform.rotation = renderer.transform.rotation;
+                piece.transform.localScale = renderer.transform.lossyScale;
+
+                piece.AddComponent<MeshFilter>().sharedMesh = filter.sharedMesh;
+                piece.AddComponent<MeshRenderer>().sharedMaterials = renderer.sharedMaterials;
+            }
+
+            return ghost;
         }
 
         private void LateUpdate()

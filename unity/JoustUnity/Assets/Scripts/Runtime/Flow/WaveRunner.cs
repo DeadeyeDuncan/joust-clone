@@ -152,7 +152,28 @@ namespace Joust.Flow
             director.AwardKill(enemy.Tier);
 
             // The rider is gone; its egg now carries the threat.
-            Destroy(enemy.gameObject, 0.1f);
+            DestroyRider(enemy, 0.1f);
+        }
+
+        /// <summary>
+        /// BuzzardAI requires RiderMotor, so tearing a rider down can try to
+        /// destroy the motor first and log an error. Strip the AI first, and
+        /// stop it steering a corpse in the meantime.
+        /// </summary>
+        private static void DestroyRider(Rider rider, float delay = 0f)
+        {
+            if (rider == null)
+            {
+                return;
+            }
+
+            var ai = rider.GetComponent<BuzzardAI>();
+            if (ai != null)
+            {
+                Destroy(ai);
+            }
+
+            Destroy(rider.gameObject, delay);
         }
 
         private void SpawnPlayer()
@@ -210,7 +231,7 @@ namespace Joust.Flow
                 director.AwardKill(rider.Tier);
             }
 
-            Destroy(rider.gameObject);
+            DestroyRider(rider);
         }
 
         private void OnPlayerDown(Rider rider)
@@ -218,10 +239,7 @@ namespace Joust.Flow
             _lostALifeThisWave = true;
             director.LoseLife();
 
-            if (rider != null)
-            {
-                Destroy(rider.gameObject);
-            }
+            DestroyRider(rider);
 
             if (director.Lives > 0)
             {
