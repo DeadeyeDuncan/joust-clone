@@ -17,7 +17,12 @@ namespace Joust.Editor
                 Application.dataPath, "..", "..", "artifacts", "build", "Joust.exe"));
             Directory.CreateDirectory(Path.GetDirectoryName(output) ?? ".");
 
-            PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone, ScriptingImplementation.IL2CPP);
+            // IL2CPP is not installed on this machine: the editor ships the
+            // il2cpp data folder but not the "Windows Build Support (IL2CPP)"
+            // module, and the build fails with "Currently selected scripting
+            // backend (IL2CPP) is not installed" (M0 finding F9). Mono is the
+            // working backend until that module is added through the Hub.
+            PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone, ScriptingImplementation.Mono2x);
             PlayerSettings.productName = "Joust";
             PlayerSettings.companyName = "DeadeyeDuncan";
 

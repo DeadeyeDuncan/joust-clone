@@ -204,6 +204,22 @@ plan should be read from that editor manifest rather than assumed.
 
 ## F5 — Arcade flight feel
 
+**Status: NOT RUN — requires the user.**
+
+`FlightPrototype` exists and is wired into both spike scenes with six tunable
+fields (`gravity`, `flapImpulse`, `thrustAcceleration`, `maxHorizontalSpeed`,
+`airDrag`, `groundSkidDeceleration`). Its *correctness* is covered by the
+PlayMode physics smoke test, but whether the flap arc and fall rate **feel** like
+Joust is a human judgement that no assertion captures, and it was left for the
+user rather than guessed at.
+
+**What the user needs to do:** open `Assets/Scenes/ArenaGritty.unity`, enter play
+mode, fly with the arrow keys and space, and tune the six serialized fields live
+until the arc is right. The accepted values then seed the M1 `TuningProfile`.
+
+The current values are placeholders chosen to be flyable, not tuned:
+gravity 24, flap impulse 9, thrust 17, max speed 12, air drag 0.6, ground skid 27.
+
 ## F6 — Lance-height resolution and double-resolution hazard
 
 **The hazard.** `OnTriggerEnter` fires on *both* colliders of a pair, so a naive
@@ -289,7 +305,8 @@ crossings, idempotency (wrapping an already-wrapped value is a no-op), a
 position many arena widths away still landing inside bounds, and a zero-width
 arena not dividing by zero.
 
-**Verdict: HELD for the arithmetic; the seam visual is still pending.** The
+**Verdict: HELD for the arithmetic; the seam visual remains pending on the same
+play session as F5.** The
 teleport is proven correct by test. Whether the ghost genuinely hides the seam
 is a visual judgement that no assertion captures, and is folded into the same
 play session as F5.
@@ -323,8 +340,143 @@ not merely assigned in settings, it is actually rendering geometry.
 Screenshots are written to `unity/artifacts/screenshots/` and published to the
 progress site by `unity/tools/build-progress-site.py`.
 
+### Asset packs, and the art-direction pivot
+
+**Kenney (CC0) imports cleanly but is the wrong look.** `kenney_platformer-kit`
+and `kenney_nature-kit` were downloaded and imported: FBX models plus one shared
+`colormap.png` atlas, so a single URP Lit material covers a whole kit. Models
+imported at correct scale and pivot, and rendered lit and **not magenta**,
+proving the import recipe end to end. But the result reads as a flat toy scene,
+and the user rejected that direction in favour of gritty realism.
+
+**Kenney's "Animal Pack" is 2D.** Worth recording so M3 does not repeat the
+mistake: despite the name, it ships PNG sprites, not models.
+
+**Quaternius is not scriptable.** Its packs are served from a Google Drive folder
+rather than direct links, so it cannot be fetched unattended. Poly Haven, by
+contrast, has a public JSON API (`api.polyhaven.com`) with direct CDN URLs for
+every map and resolution, and is CC0. **Poly Haven is the asset source for M3.**
+
+**What the gritty direction needed:** `worn_rock_natural_01` and
+`burned_ground_01` PBR sets (diffuse, normal, roughness, AO) plus the
+`kloppenheim_07` night HDRI, all CC0 from Poly Haven, driving hand-built URP Lit
+materials rather than importer-guessed ones.
+
+**Verdict: HELD.** Third-party CC0 assets import, scale, and render correctly
+under URP, and a fully scriptable pipeline exists for fetching them.
+
 ## F9 — Windows player build
+
+**IL2CPP is not installed, despite appearances.** The first build failed:
+
+```
+Error building Player: Currently selected scripting backend (IL2CPP) is not installed.
+build result=Failed size=0 errors=1
+```
+
+The editor ships `Editor/Data/il2cpp`, and `PlaybackEngines/windowsstandalonesupport`
+is present, so IL2CPP looks available on disk. The **build module** is not
+installed. This is the same shape as the URP scar: the presence of files proves
+nothing about whether the feature is usable.
+
+**Mono builds cleanly.** Switching to `ScriptingImplementation.Mono2x`:
+
+```
+unityExit=0
+build result=Succeeded size=116344340 errors=0
+PASS: player built at unity/artifacts/build/Joust.exe
+```
+
+176 files, 111.2 MB, D3D12, `MonoBleedingEdge` runtime.
+
+**Verdict: HELD with a substitution.** A Windows player builds headlessly from
+the command line. The scripting backend is Mono, not the IL2CPP the design spec
+assumed for M5.
+
+### Correction to F2's shader-name check
+
+F2 noted the shader-name check would be "decisive in a player build log". Running
+it properly shows that claim was too strong. The player build log contains:
+
+```
+urp_shader_lines=28 builtin_shader_lines=4
+```
+
+and those four built-in lines are:
+
+```
+Compiling shader "Hidden/Internal-DeferredShading"
+Compiling shader "Hidden/Internal-DeferredReflections"
+```
+
+Unity compiles those always-included built-in shaders into the player **even when
+URP is the active pipeline**. So "zero built-in deferred shader lines" is *not* a
+valid discriminator in either an editor log or a player log. The only sound check
+for pipeline activation remains the one F2 actually relied on: a non-zero
+`m_CustomRenderPipeline` in `GraphicsSettings.asset` whose guid matches the
+intended pipeline asset.
+
+### Build-log hygiene
+
+`BuildScript` reports `summary.totalErrors`, a computed value, never a hardcoded
+"0 errors" string, and the wrapper additionally gates on the built `.exe`
+existing on disk rather than on the process exit code. Both guard against a
+build-log summary line that cannot express failure.
+
+**Not done: the user smoke test.** The player exists but has not been run by a
+human. That is the remaining F9 step.
 
 ## Verdict
 
+| # | Assumption | Result |
+|---|---|---|
+| F1 | Project creates headlessly | **HELD** — no Hub config needed |
+| F2 | URP can be activated and proven | **HELD** — settings guid is the only sound check |
+| F3 | EditMode tests run headless | **HELD** — after three rounds of runner hardening |
+| F4 | PlayMode tests run headless | **HELD** — better than the plan assumed |
+| F5 | Flight feels like Joust | **NOT RUN** — needs the user |
+| F6 | Lance-height resolution, once per pair | **HELD** — proven by automated test |
+| F7 | Screen wrap | **HELD** for arithmetic; seam visual pending |
+| F8 | Asset packs import and render | **HELD** — plus an art-direction pivot |
+| F9 | Windows player builds | **HELD** — on Mono; IL2CPP not installed |
+
+Seven of nine held outright, one held with a substitution, one is blocked on a
+human judgement that should not be faked. **M1 may be planned.**
+
 ## Consequences for the M1 plan
+
+1. **Never gate on a Unity process exit code.** Use
+   `unity/tools/run-unity-tests.ps1`, which gates on the results XML. `-runTests`
+   exits 0 on compile failure.
+2. **Serialize every Unity invocation.** Unity holds an exclusive project lock;
+   parallel test and capture steps will fail intermittently.
+3. **Physics can be gated automatically.** Headless PlayMode works, so M1 does
+   not need the planned manual-smoke fallback for correctness. Feel still needs a
+   human.
+4. **Pure functions beside thin MonoBehaviours.** `JoustResolver` and
+   `ScreenWrapPrototype.WrapX` turned untestable frame behaviour into fast
+   EditMode tests. This is the pattern that makes an idiomatic Unity build
+   testable; M1 should follow it for movement, scoring, and wave scheduling.
+5. **Unity 6000.5 API breaks.** `Object.GetInstanceID()` and `EntityId`'s int
+   conversion are both obsolete-as-**error**. Any code adapted from pre-Unity-6
+   examples will not compile.
+6. **Read package versions from the editor manifest**, at
+   `Editor/Data/Resources/PackageManager/Editor/manifest.json`, rather than
+   pinning guessed versions. The plan's Input System pin was below the floor.
+7. **Decide the scripting backend.** The spec assumes IL2CPP for M5. Either
+   install "Windows Build Support (IL2CPP)" through the Hub, or amend the spec to
+   ship on Mono.
+8. **Art comes from Poly Haven**, fetched through its API. Kenney is fine for
+   blockout but the wrong look; Quaternius cannot be automated.
+9. **Two rendering traps to design around.** Fog never touches the skybox, so a
+   horizon must be masked with geometry. And a saturated key light tints every
+   near surface in a way that looks exactly like a material bug — when the *same*
+   material renders differently at different distances, suspect lighting, not
+   assignment.
+10. **The scene scale is fixed at 20 logical pixels per world unit**, so the
+    arena is 32 units wide and a mount is 2.0 x 1.6 units. M1 should keep this
+    mapping and the `WorldX`/`WorldY`/`Units` helpers.
+11. **The arcade is the authority**, per
+    `2026-08-29-arcade-joust-reference.md`. Two divergences to correct in M1:
+    Shadow Lords score 1000 not 1500, and defeated riders promote one tier on
+    hatch rather than spawning from a fixed composition list.
