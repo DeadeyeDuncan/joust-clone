@@ -457,7 +457,7 @@ namespace Joust.Editor
                 glow.type = LightType.Point;
                 glow.transform.position = new Vector3(i * 12f, -10.5f, 26f);
                 glow.color = new Color(1f, 0.34f, 0.10f);
-                glow.intensity = 22f;
+                glow.intensity = 12f;
                 glow.range = 40f;
                 glow.shadows = LightShadows.None;
             }
@@ -479,8 +479,8 @@ namespace Joust.Editor
                 // lava warm everything from below.
                 RenderSettings.ambientMode = AmbientMode.Trilight;
                 RenderSettings.ambientSkyColor = new Color(0.20f, 0.22f, 0.30f);
-                RenderSettings.ambientEquatorColor = new Color(0.20f, 0.15f, 0.14f);
-                RenderSettings.ambientGroundColor = new Color(0.34f, 0.13f, 0.05f);
+                RenderSettings.ambientEquatorColor = new Color(0.17f, 0.16f, 0.17f);
+                RenderSettings.ambientGroundColor = new Color(0.16f, 0.08f, 0.05f);
             }
             else
             {
@@ -488,7 +488,7 @@ namespace Joust.Editor
                 RenderSettings.ambientMode = AmbientMode.Trilight;
             }
 
-            RenderSettings.ambientIntensity = 1f;
+            RenderSettings.ambientIntensity = 0.55f;
 
             var sun = UnityEngine.Object
                 .FindObjectsByType<Light>(FindObjectsSortMode.None)
@@ -505,7 +505,7 @@ namespace Joust.Editor
             // and rim rather than as an evenly lit prop.
             sun.transform.rotation = Quaternion.Euler(34f, 28f, 0f);
             sun.color = new Color(0.95f, 0.93f, 0.92f);
-            sun.intensity = 1.05f;
+            sun.intensity = 1.35f;
             sun.shadows = LightShadows.Soft;
 
             var rim = new GameObject("MoonRim").AddComponent<Light>();
@@ -519,7 +519,7 @@ namespace Joust.Editor
             bounce.type = LightType.Directional;
             bounce.transform.rotation = Quaternion.Euler(-70f, 8f, 0f);
             bounce.color = new Color(1f, 0.32f, 0.09f);
-            bounce.intensity = 1.5f;
+            bounce.intensity = 0.7f;
             bounce.shadows = LightShadows.None;
 
             RenderSettings.fog = true;
@@ -665,7 +665,7 @@ namespace Joust.Editor
                 glow.type = LightType.Point;
                 glow.transform.position = new Vector3(i * 9f, -8.5f, 0f);
                 glow.color = new Color(1f, 0.38f, 0.12f);
-                glow.intensity = 11f;
+                glow.intensity = 6f;
                 glow.range = 26f;
                 glow.shadows = LightShadows.None;
             }
@@ -761,9 +761,9 @@ namespace Joust.Editor
 
             var bloom = profile.Add<Bloom>(true);
             bloom.intensity.overrideState = true;
-            bloom.intensity.value = 1.55f;
+            bloom.intensity.value = 0.75f;
             bloom.threshold.overrideState = true;
-            bloom.threshold.value = 0.75f;
+            bloom.threshold.value = 1.15f;
             bloom.scatter.overrideState = true;
             bloom.scatter.value = 0.72f;
             bloom.tint.overrideState = true;

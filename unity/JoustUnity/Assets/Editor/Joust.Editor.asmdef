@@ -4,7 +4,8 @@
   "references": [
     "Unity.RenderPipelines.Core.Runtime",
     "Unity.RenderPipelines.Universal.Runtime",
-    "Joust.Runtime"
+    "Joust.Runtime",
+    "Joust.UI"
   ],
   "includePlatforms": [
     "Editor"

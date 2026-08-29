@@ -1249,3 +1249,38 @@ git commit -m "feat: playable core loop with HUD"
 - Score values match the arcade reference, including Shadow Lord at 1000.
 - Eggs promote on hatch.
 - Progress site updated with an M1 screenshot.
+
+
+---
+
+## Known defects at the end of Task 7
+
+Recorded rather than left for someone to rediscover. Neither blocks play; both
+belong to M3 (presentation).
+
+**1. The bounder renders cream despite a red material.**
+`bounder_plumage.mat` carries `_BaseColor 0.66, 0.15, 0.11` and the game scene
+references its guid three times (mount, head, lance shaft), verified by reading
+the scene file. It still renders the same near-white as the player. Three
+hypotheses were tested and eliminated:
+
+- *Material asset collapse* — disproved: the two plumage materials exist as
+  separate assets with distinct guids and distinct reference counts.
+- *Saturated key light washing colour out* — this genuinely caused an earlier
+  all-blue frame, but the light is now near-white at moderate intensity.
+- *Bloom blowout* — halving bloom intensity and raising its threshold changed
+  the frame not at all.
+
+Cause unknown. Next thing to try: read the renderer's material binding at
+runtime rather than from the scene file, since a serialized reference and a
+live binding are not the same claim.
+
+**2. No post-processing in the built scene.**
+`Assets/Settings/GrittyVolume.asset` does not exist after a scene build, so the
+Volume component has no profile and the colour grading, vignette, film grain and
+tonemapping authored in M0 are not running. The screenshots throughout M0 and M1
+therefore show raw lit output, not the intended grade.
+
+This also means F8's screenshots in the M0 findings are weaker evidence for the
+art direction than they appear: they show the lighting and materials, but never
+the post stack.

@@ -8,7 +8,7 @@ namespace Joust.Editor
 {
     public static class BuildScript
     {
-        private const string Scene = "Assets/Scenes/ArenaGritty.unity";
+        private const string Scene = "Assets/Scenes/Game.unity";
 
         [MenuItem("Joust/Build Windows Player")]
         public static void BuildWindows()

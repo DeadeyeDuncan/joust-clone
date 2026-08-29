@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<engine:UXML xmlns:engine="UnityEngine.UIElements">
+    <engine:VisualElement name="hud" class="hud">
+        <engine:VisualElement name="hud-row" class="hud-row">
+            <engine:VisualElement class="stat">
+                <engine:Label name="score-label" class="stat-label" text="SCORE" />
+                <engine:Label name="score-value" class="stat-value" text="0" />
+            </engine:VisualElement>
+            <engine:VisualElement class="stat stat--center">
+                <engine:Label name="wave-label" class="stat-label" text="WAVE" />
+                <engine:Label name="wave-value" class="stat-value" text="1" />
+            </engine:VisualElement>
+            <engine:VisualElement class="stat stat--right">
+                <engine:Label name="lives-label" class="stat-label" text="LIVES" />
+                <engine:Label name="lives-value" class="stat-value" text="3" />
+            </engine:VisualElement>
+        </engine:VisualElement>
+        <engine:Label name="banner" class="banner" text="" />
+    </engine:VisualElement>
+</engine:UXML>
