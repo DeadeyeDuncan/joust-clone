@@ -160,6 +160,48 @@ this editor version.
 
 ## F4 — Headless PlayMode tests
 
+**Setup.** `com.unity.inputsystem@1.20.0` added and
+`ProjectSettings.asset` `activeInputHandler` changed from `0` (old input manager)
+to `1` (new Input System only), edited directly in the settings asset before the
+editor was launched, so no interactive restart prompt was involved. A PlayMode
+assembly and one physics smoke test were added: a `Rigidbody` with `useGravity`
+disabled, driven by `AddForce(ForceMode.Acceleration)` across 30 fixed steps,
+asserting the body moved downward.
+
+**Commands**
+
+```
+powershell -ExecutionPolicy Bypass -File unity/tools/run-unity-tests.ps1 -Platform PlayMode
+powershell -ExecutionPolicy Bypass -File unity/tools/run-unity-tests.ps1 -Platform EditMode
+```
+
+**Observed**
+
+```
+platform=PlayMode total=1 passed=1 failed=0 result=Passed unityExit=0
+platform=EditMode total=7 passed=7 failed=0 result=Passed unityExit=0
+```
+
+PlayMode test duration 0.628 s; EditMode still 7/7 after the Input System
+install, so the package did not break compilation.
+
+**Verdict: HELD, and better than the plan assumed.** Headless PlayMode tests run
+on this machine. The wrapper passes `-batchmode` without `-nographics`, which is
+what makes it work — a PlayMode run needs a graphics device even when no window
+is shown.
+
+**Consequence for M1.** The plan's fallback — gating physics changes on manual
+controller smoke because automated PlayMode might be unavailable — is not needed.
+M1 can gate flight, landing, wrap and collision behaviour with automated PlayMode
+tests. Manual smoke is still required for *feel*, which no assertion captures,
+but correctness is automatable.
+
+**Version note.** The plan pinned `com.unity.inputsystem` at `1.14.2`. This
+editor declares a minimum of `1.20.0` in
+`Editor/Data/Resources/PackageManager/Editor/manifest.json`, so the planned pin
+was below the floor and `1.20.0` was used instead. Package versions in the M1
+plan should be read from that editor manifest rather than assumed.
+
 ## F5 — Arcade flight feel
 
 ## F6 — Lance-height resolution and double-resolution hazard
