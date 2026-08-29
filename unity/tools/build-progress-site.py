@@ -87,11 +87,21 @@ def summarize(body, limit=420):
 
     for para in body.split("\n\n"):
         para = para.strip()
-        if not para or para.startswith(("```", "|", "#", "-", "*")):
+        if not para:
             continue
+        # Strip inline markup FIRST. A paragraph opening with "**Observed:**"
+        # is prose, not a bullet, and must not be filtered out as one.
         para = re.sub(r"`([^`]*)`", r"\1", para)
         para = re.sub(r"\*\*([^*]*)\*\*", r"\1", para)
-        para = para.replace("\n", " ")
+        para = re.sub(r"\*([^*]+)\*", r"\1", para)
+        # Skip genuine non-prose blocks: fences, tables, headings, list items.
+        if para.startswith(("```", "|", "#")) or re.match(r"^[-*+]\s", para):
+            continue
+        para = para.replace("\n", " ").strip()
+        # Skip bare labels such as "Command" or "Observed:" that head a code
+        # block rather than saying anything on their own.
+        if len(para) < 40:
+            continue
         if len(para) > limit:
             para = para[:limit].rsplit(" ", 1)[0] + "…"
         return para

@@ -108,22 +108,22 @@
         <article class="finding held">
           <header><span class="fid">F1</span><h3>Project creation</h3>
           <span class="badge held">held</span></header>
-          <p>See the findings document.</p>
+          <p>&quot;G:/UnityEditors/6000.5.10f1/Editor/Unity.exe&quot; -createProject &quot;I:/Joust/unity/JoustUnity&quot; \   -batchmode -quit -nographics -logFile &quot;I:/Joust/unity/artifacts/create.log&quot;</p>
         </article>
         <article class="finding held">
           <header><span class="fid">F2</span><h3>URP activation</h3>
           <span class="badge held">held</span></header>
-          <p>See the findings document.</p>
+          <p>Setup. com.unity.render-pipelines.universal pinned to 17.5.0, the version this editor bundles, read from Editor/Data/Resources/PackageManager/Editor/manifest.json rather than guessed. Assets/Editor/UrpSetup.cs creates the renderer and pipeline assets and assigns them.</p>
         </article>
         <article class="finding held">
           <header><span class="fid">F3</span><h3>Headless EditMode tests</h3>
           <span class="badge held">held</span></header>
-          <p>Test execution time was 0.022 seconds for the seven cases. The Unity startup and domain reload around it dominate wall-clock, but the suite itself is effectively free, so EditMode tests can gate every M1 change.</p>
+          <p>Setup. com.unity.test-framework@1.7.0 added to the manifest (see F1 — it is not in the default project). Joust.Runtime and Joust.Tests.EditMode assembly definitions created, seven tests written against Joust.Combat.JoustResolver.Resolve.</p>
         </article>
         <article class="finding held">
           <header><span class="fid">F4</span><h3>Headless PlayMode tests</h3>
           <span class="badge held">held</span></header>
-          <p>PlayMode test duration 0.628 s; EditMode still 7/7 after the Input System install, so the package did not break compilation.</p>
+          <p>Setup. com.unity.inputsystem@1.20.0 added and ProjectSettings.asset activeInputHandler changed from 0 (old input manager) to 1 (new Input System only), edited directly in the settings asset before the editor was launched, so no interactive restart prompt was involved. A PlayMode assembly and one physics smoke test were added: a Rigidbody with useGravity disabled, driven by AddForce(ForceMode.Acceleration) across 30…</p>
         </article>
         <article class="finding pending">
           <header><span class="fid">F5</span><h3>Arcade flight feel</h3>
@@ -133,7 +133,7 @@
         <article class="finding held">
           <header><span class="fid">F6</span><h3>Lance-height resolution and double-resolution hazard</h3>
           <span class="badge held">held</span></header>
-          <p>The decisive assertions: OverlappingRidersResolveExactlyOnce asserts JoustContact.ResolutionCount == 1 after one overlap, and TheHigherLanceIsRecordedAsTheWinner asserts the rider with the higher lance is the recorded winner.</p>
+          <p>The hazard. OnTriggerEnter fires on both colliders of a pair, so a naive handler resolves the same duel twice and can kill both riders. The plan proposed checking this by watching the console for duplicate log lines. That is not evidence, so it was replaced with automated tests.</p>
         </article>
         <article class="finding pending">
           <header><span class="fid">F7</span><h3>Screen wrap</h3>
@@ -155,7 +155,8 @@
   <figure><img src="shots/m0-spike-scene.png" alt="m0-spike-scene.png" loading="lazy"><figcaption>m0-spike-scene.png</figcaption></figure>
 
   <h2>Recent commits</h2>
-  <ul class="commits"><li><code>89cdfd4 test: probe headless PlayMode and install the Input System</code></li>
+  <ul class="commits"><li><code>3f72614 feat: lance-height contact resolution, screenshots, progress site</code></li>
+<li><code>89cdfd4 test: probe headless PlayMode and install the Input System</code></li>
 <li><code>dae6684 test: headless EditMode runner and lance-height resolver</code></li>
 <li><code>87f6f8f build: install URP 17.5.0 and prove pipeline activation</code></li>
 <li><code>6da9db3 chore: scaffold Unity 6 project for the native rebuild spike</code></li>
@@ -168,8 +169,7 @@
 <li><code>f79d7b0 fix: scope wrapped collision and dual-blit to wrapping entities</code></li>
 <li><code>eb528bd fix: final-review wave (7 findings, 2 reviewers converged)</code></li>
 <li><code>1e76912 docs: README</code></li>
-<li><code>989b47a feat: two player complete</code></li>
-<li><code>2235383 fix: symmetric joust rider height</code></li></ul>
+<li><code>989b47a feat: two player complete</code></li></ul>
 
   <footer>
     Generated from the repository by <code>unity/tools/build-progress-site.py</code>.
