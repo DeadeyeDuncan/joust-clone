@@ -8,3 +8,26 @@ __pycache__/
 .pytest_cache/
 dist/
 build/
+
+# --- Unity ---
+unity/JoustUnity/[Ll]ibrary/
+unity/JoustUnity/[Tt]emp/
+unity/JoustUnity/[Oo]bj/
+unity/JoustUnity/[Bb]uild/
+unity/JoustUnity/[Bb]uilds/
+unity/JoustUnity/[Ll]ogs/
+unity/JoustUnity/[Uu]ser[Ss]ettings/
+unity/JoustUnity/[Mm]emoryCaptures/
+unity/JoustUnity/[Rr]ecordings/
+unity/JoustUnity/.vsconfig
+unity/JoustUnity/*.csproj
+unity/JoustUnity/*.sln
+unity/JoustUnity/*.unityproj
+unity/JoustUnity/*.pidb
+unity/JoustUnity/*.booproj
+unity/JoustUnity/*.svd
+unity/JoustUnity/*.apk
+unity/JoustUnity/*.aab
+unity/JoustUnity/*.unitypackage
+unity/JoustUnity/crashlytics-build.properties
+unity/artifacts/
