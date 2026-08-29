@@ -27,6 +27,8 @@ KEY_FILE = os.path.join(REPO_ROOT, "unity", "tools", ".polypizza-key")
 ART_DIR = os.path.join(REPO_ROOT, "unity", "JoustUnity", "Assets", "Art", "PolyPizza")
 ATTRIBUTION = os.path.join(ART_DIR, "ATTRIBUTION.md")
 API = "https://api.poly.pizza/v1.1"
+# The asset CDN rejects urllib's default user-agent with a 403.
+BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 
 
 def read_key():
@@ -88,8 +90,14 @@ def get(model_id, name):
     licence = item.get("Licence") or item.get("License") or "unknown"
 
     out = os.path.join(ART_DIR, f"{name}.glb")
-    with urllib.request.urlopen(download, timeout=120) as response, open(out, "wb") as handle:
-        handle.write(response.read())
+    request = urllib.request.Request(download, headers={"User-Agent": BROWSER_UA})
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response, open(out, "wb") as handle:
+            handle.write(response.read())
+    except urllib.error.HTTPError as error:
+        sys.exit(f"download failed for {model_id}: HTTP {error.code} {error.reason}")
+    except urllib.error.URLError as error:
+        sys.exit(f"download failed for {model_id}: {error.reason}")
 
     size = os.path.getsize(out) / 1e6
     print(f"saved {out} ({size:.2f} MB)")
