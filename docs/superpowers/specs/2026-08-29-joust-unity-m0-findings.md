@@ -204,7 +204,17 @@ plan should be read from that editor manifest rather than assumed.
 
 ## F5 — Arcade flight feel
 
-**Status: NOT RUN — requires the user.**
+**Status: PROVISIONALLY ACCEPTED — real verdict deferred to M1.**
+
+The user reviewed the scene on 2026-08-29 and approved the look ("looks pretty
+good for where we are now"), and chose to accept the current flight values as a
+provisional baseline rather than tune them against a spike scene with nothing to
+fight. The feel verdict properly belongs in M1, where there is an enemy, a
+collision and a death to judge the handling against; M1's definition of done
+already requires the user to accept tuning.
+
+Recorded so the distinction is not lost later: **the visuals were approved, the
+feel was not yet judged.**
 
 `FlightPrototype` exists and is wired into both spike scenes with six tunable
 fields (`gravity`, `flapImpulse`, `thrustAcceleration`, `maxHorizontalSpeed`,
@@ -217,7 +227,7 @@ user rather than guessed at.
 mode, fly with the arrow keys and space, and tune the six serialized fields live
 until the arc is right. The accepted values then seed the M1 `TuningProfile`.
 
-The current values are placeholders chosen to be flyable, not tuned:
+The accepted provisional baseline, to be carried into M1's `TuningProfile`:
 gravity 24, flap impulse 9, thrust 17, max speed 12, air drag 0.6, ground skid 27.
 
 ## F6 — Lance-height resolution and double-resolution hazard
@@ -434,14 +444,15 @@ human. That is the remaining F9 step.
 | F2 | URP can be activated and proven | **HELD** — settings guid is the only sound check |
 | F3 | EditMode tests run headless | **HELD** — after three rounds of runner hardening |
 | F4 | PlayMode tests run headless | **HELD** — better than the plan assumed |
-| F5 | Flight feels like Joust | **NOT RUN** — needs the user |
+| F5 | Flight feels like Joust | **PROVISIONAL** — values accepted, feel judged in M1 |
 | F6 | Lance-height resolution, once per pair | **HELD** — proven by automated test |
 | F7 | Screen wrap | **HELD** for arithmetic; seam visual pending |
 | F8 | Asset packs import and render | **HELD** — plus an art-direction pivot |
 | F9 | Windows player builds | **HELD** — on Mono; IL2CPP not installed |
 
-Seven of nine held outright, one held with a substitution, one is blocked on a
-human judgement that should not be faked. **M1 may be planned.**
+Seven of nine held outright, one held with a substitution, and one (F5) is
+provisionally accepted with its real verdict deferred to M1, where there is
+gameplay to judge feel against. **M1 may be planned and executed.**
 
 ## Consequences for the M1 plan
 
