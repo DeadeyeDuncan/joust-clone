@@ -29,7 +29,10 @@ if (Test-Path $log)     { Remove-Item $log -Force }
 # artifacts, leaving $LASTEXITCODE empty and the wrapper reading a half-finished
 # run (M0 finding F3). Start-Process -Wait -PassThru blocks until the editor
 # process actually exits and hands back a real exit code.
-$proc = Start-Process -FilePath $editor -PassThru -Wait -NoNewWindow -ArgumentList @(
+# EditMode needs no graphics device, so it runs with -nographics and cannot
+# steal focus or the GPU from whatever else is running. PlayMode genuinely
+# needs a device and will briefly take focus.
+$unityArgs = @(
     '-batchmode'
     '-runTests'
     '-projectPath', $project
@@ -37,6 +40,9 @@ $proc = Start-Process -FilePath $editor -PassThru -Wait -NoNewWindow -ArgumentLi
     '-testResults', $results
     '-logFile', $log
 )
+if ($Platform -eq 'EditMode') { $unityArgs += '-nographics' }
+
+$proc = Start-Process -FilePath $editor -PassThru -Wait -NoNewWindow -ArgumentList $unityArgs
 $unityExit = $proc.ExitCode
 
 if (-not (Test-Path $results)) {
