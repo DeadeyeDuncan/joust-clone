@@ -64,7 +64,7 @@
   happens: milestones, spike findings, screenshots, and commits.</p>
 
   <div class="stats">
-    <div class="stat"><b>6/9</b><span>M0 findings held</span></div>
+    <div class="stat"><b>8/9</b><span>M0 findings held</span></div>
     <div class="stat"><b>15</b><span>recent commits</span></div>
     <div class="stat"><b>feat/unity-m0-spike</b><span>branch</span></div>
   </div>
@@ -125,10 +125,10 @@
           <span class="badge held">held</span></header>
           <p>Setup. com.unity.inputsystem@1.20.0 added and ProjectSettings.asset activeInputHandler changed from 0 (old input manager) to 1 (new Input System only), edited directly in the settings asset before the editor was launched, so no interactive restart prompt was involved. A PlayMode assembly and one physics smoke test were added: a Rigidbody with useGravity disabled, driven by AddForce(ForceMode.Acceleration) across 30…</p>
         </article>
-        <article class="finding pending">
+        <article class="finding recorded">
           <header><span class="fid">F5</span><h3>Arcade flight feel</h3>
-          <span class="badge pending">pending</span></header>
-          <p>Not yet run.</p>
+          <span class="badge recorded">recorded</span></header>
+          <p>FlightPrototype exists and is wired into both spike scenes with six tunable fields (gravity, flapImpulse, thrustAcceleration, maxHorizontalSpeed, airDrag, groundSkidDeceleration). Its correctness is covered by the PlayMode physics smoke test, but whether the flap arc and fall rate feel like Joust is a human judgement that no assertion captures, and it was left for the user rather than guessed at.</p>
         </article>
         <article class="finding held">
           <header><span class="fid">F6</span><h3>Lance-height resolution and double-resolution hazard</h3>
@@ -140,22 +140,27 @@
           <span class="badge held">held</span></header>
           <p>What was built. ScreenWrapPrototype teleports an entity across the arena bounds and maintains a ghost copy near the seam so the crossing is not visible as a pop. The wrap arithmetic was pulled out as a pure static method, WrapX(float x, float halfWidth), so it is testable without physics or a scene.</p>
         </article>
-        <article class="finding recorded">
+        <article class="finding held">
           <header><span class="fid">F8</span><h3>Asset pack import and animation</h3>
-          <span class="badge recorded">recorded</span></header>
+          <span class="badge held">held</span></header>
           <p>Assets/Editor/ScreenshotTool.cs renders a scene camera to a PNG from the command line, with -scene, -output, -width and -height arguments. It must run without -nographics: rendering needs a graphics device even when no window is shown.</p>
         </article>
-        <article class="finding pending">
+        <article class="finding held">
           <header><span class="fid">F9</span><h3>Windows player build</h3>
-          <span class="badge pending">pending</span></header>
-          <p>Not yet run.</p>
+          <span class="badge held">held</span></header>
+          <p>IL2CPP is not installed, despite appearances. The first build failed:</p>
         </article>
 
   <h2>Screenshots</h2>
-  <figure><img src="shots/m0-spike-scene.png" alt="m0-spike-scene.png" loading="lazy"><figcaption>m0-spike-scene.png</figcaption></figure>
+  <figure><img src="shots/m0-arena.png" alt="m0-arena.png" loading="lazy"><figcaption>m0-arena.png</figcaption></figure>
+<figure><img src="shots/m0-gritty.png" alt="m0-gritty.png" loading="lazy"><figcaption>m0-gritty.png</figcaption></figure>
+<figure><img src="shots/m0-spike-scene.png" alt="m0-spike-scene.png" loading="lazy"><figcaption>m0-spike-scene.png</figcaption></figure>
 
   <h2>Recent commits</h2>
-  <ul class="commits"><li><code>6ff7a21 docs: progress site summaries and publish helper</code></li>
+  <ul class="commits"><li><code>d86fa03 feat: procedural rock arena at arcade scale</code></li>
+<li><code>d11474a docs: arcade Joust reference, and gritty art direction</code></li>
+<li><code>0771223 feat: screen wrap with seam ghost</code></li>
+<li><code>6ff7a21 docs: progress site summaries and publish helper</code></li>
 <li><code>3f72614 feat: lance-height contact resolution, screenshots, progress site</code></li>
 <li><code>89cdfd4 test: probe headless PlayMode and install the Input System</code></li>
 <li><code>dae6684 test: headless EditMode runner and lance-height resolver</code></li>
@@ -166,10 +171,7 @@
 <li><code>dd6afc8 docs: genericize machine paths in plan</code></li>
 <li><code>6bd52e4 build: PyInstaller spec for onefile exe</code></li>
 <li><code>eb86c2f feat: play-test feel tuning</code></li>
-<li><code>c643b25 fix: numpad 1/2 select players in attract</code></li>
-<li><code>f79d7b0 fix: scope wrapped collision and dual-blit to wrapping entities</code></li>
-<li><code>eb528bd fix: final-review wave (7 findings, 2 reviewers converged)</code></li>
-<li><code>1e76912 docs: README</code></li></ul>
+<li><code>c643b25 fix: numpad 1/2 select players in attract</code></li></ul>
 
   <footer>
     Generated from the repository by <code>unity/tools/build-progress-site.py</code>.
