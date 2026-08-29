@@ -31,3 +31,8 @@ unity/JoustUnity/*.aab
 unity/JoustUnity/*.unitypackage
 unity/JoustUnity/crashlytics-build.properties
 unity/artifacts/
+
+# --- secrets ---
+# API keys live outside version control. This repo is public.
+unity/tools/.polypizza-key
+*.key
