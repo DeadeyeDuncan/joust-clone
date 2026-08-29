@@ -206,9 +206,94 @@ plan should be read from that editor manifest rather than assumed.
 
 ## F6 — Lance-height resolution and double-resolution hazard
 
+**The hazard.** `OnTriggerEnter` fires on *both* colliders of a pair, so a naive
+handler resolves the same duel twice and can kill both riders. The plan proposed
+checking this by watching the console for duplicate log lines. That is not
+evidence, so it was replaced with automated tests.
+
+**What was built.** `JoustContact` guards resolution with an ownership rule:
+of the two participants, only the one with the lower entity id resolves. Three
+EditMode tests pin the rule itself; two PlayMode tests drive real physics —
+two overlapping trigger colliders with kinematic rigidbodies — and assert the
+observable outcome.
+
+**Observed**
+
+```
+platform=EditMode total=10 passed=10 failed=0 result=Passed
+platform=PlayMode total=3  passed=3  failed=0 result=Passed
+```
+
+The decisive assertions: `OverlappingRidersResolveExactlyOnce` asserts
+`JoustContact.ResolutionCount == 1` after one overlap, and
+`TheHigherLanceIsRecordedAsTheWinner` asserts the rider with the higher lance is
+the recorded winner.
+
+**Verdict: HELD.** One overlap produces exactly one resolution, and the
+lance-height rule decides it. The design of resolving combat by explicit height
+comparison rather than collider geometry works under real physics.
+
+### Unplanned finding — two Unity 6000.5 API breaks, both obsolete-as-ERROR
+
+`Object.GetInstanceID()` does not merely warn in this editor version, it fails
+the build:
+
+```
+error CS0619: 'Object.GetInstanceID()' is obsolete: 'Use GetEntityId instead.'
+```
+
+The obvious fix — casting the replacement to `int` — fails the same way:
+
+```
+error CS0619: 'EntityId.implicit operator int(EntityId)' is obsolete:
+'EntityId will not be representable by an int in the future.'
+```
+
+The resolution was to make the ownership rule generic,
+`ShouldResolve<T>(T self, T other) where T : IComparable<T>`, so the runtime
+compares `EntityId` values directly while the tests still exercise the rule with
+plain ints. **Consequence for M1:** any code ported or generated from
+pre-Unity-6 examples that calls `GetInstanceID()` will not compile, and entity
+ids must not be stored or compared as `int`.
+
+### Unplanned finding — Unity holds an exclusive project lock
+
+Two Unity invocations against the same project cannot overlap:
+
+```
+Aborting batchmode due to fatal error:
+It looks like another Unity instance is running with this project open.
+```
+
+This was hit by launching a screenshot capture while a test run was still
+active. **Consequence for M1:** every Unity invocation must be serialized. A CI
+pipeline that runs tests and captures screenshots in parallel against one project
+directory will fail intermittently; either serialize the steps or give each a
+separate project copy.
+
 ## F7 — Screen wrap
 
 ## F8 — Asset pack import and animation
+
+### Screenshot capture capability (built alongside)
+
+`Assets/Editor/ScreenshotTool.cs` renders a scene camera to a PNG from the
+command line, with `-scene`, `-output`, `-width` and `-height` arguments. It must
+run **without** `-nographics`: rendering needs a graphics device even when no
+window is shown.
+
+```
+Unity.exe -batchmode -quit -projectPath <project>   -executeMethod Joust.Editor.ScreenshotTool.CaptureFromCommandLine   -scene Assets/Scenes/Spike.unity -output <path>.png -width 1280 -height 720
+```
+
+**Observed:** `screenshot written to ...m0-spike-scene.png (1280x720)`, and the
+image shows the URP sky gradient, a lit capsule and three platforms — correctly
+lit and **not magenta**. Magenta is the near-universal signature of a shader that
+failed to load, so a correctly lit render is the visual complement to F2: URP is
+not merely assigned in settings, it is actually rendering geometry.
+
+Screenshots are written to `unity/artifacts/screenshots/` and published to the
+progress site by `unity/tools/build-progress-site.py`.
 
 ## F9 — Windows player build
 

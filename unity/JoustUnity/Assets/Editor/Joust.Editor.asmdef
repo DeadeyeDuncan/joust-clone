@@ -1,8 +1,13 @@
 {
   "name": "Joust.Editor",
   "rootNamespace": "Joust.Editor",
-  "references": ["Unity.RenderPipelines.Universal.Runtime"],
-  "includePlatforms": ["Editor"],
+  "references": [
+    "Unity.RenderPipelines.Universal.Runtime",
+    "Joust.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
   "overrideReferences": false,
