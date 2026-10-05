@@ -111,7 +111,9 @@ def summarize(body, limit=420):
 
 def copy_screenshots():
     if not os.path.isdir(SHOTS_SRC):
-        return []
+        # Captures are local artifacts; a fresh clone still has published shots.
+        return sorted(name for name in os.listdir(SHOTS_DST)
+                      if name.lower().endswith((".png", ".jpg"))) if os.path.isdir(SHOTS_DST) else []
 
     os.makedirs(SHOTS_DST, exist_ok=True)
     names = []
@@ -146,8 +148,9 @@ def build():
 
     milestone_rows = []
     for key, name, detail in MILESTONES:
-        state = "active" if key == "M0" else "queued"
-        label = "in progress" if key == "M0" else "queued"
+        state = "active" if key == "M2" else "queued"
+        label = {"M0": "findings recorded", "M1": "core loop implemented",
+                 "M2": "implemented in part; verification pending"}.get(key, "queued")
         milestone_rows.append(f"""
         <tr class="{state}">
           <td class="key">{esc(key)}</td>
@@ -238,6 +241,11 @@ def build():
   </div>
 
   <h2>Milestones</h2>
+  <p class="muted">The core loop and M2 egg, tier, lava, respawn and wave systems
+  are in source. Full parity and release readiness are not yet verified. Remaining
+  checks include the user smoke test and the shipping backend: the recorded player
+  build uses Mono, while IL2CPP support remains open. The Python game remains on
+  <a href="https://github.com/DeadeyeDuncan/joust-clone/tree/master">master</a>.</p>
   <table>{''.join(milestone_rows)}
   </table>
 
