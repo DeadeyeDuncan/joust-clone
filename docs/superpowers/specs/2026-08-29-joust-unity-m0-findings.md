@@ -204,7 +204,7 @@ plan should be read from that editor manifest rather than assumed.
 
 ## F5 — Arcade flight feel
 
-**Status: HELD — tuned and accepted during M1, 2026-08-29.**
+**Verdict: HELD - tuned and accepted during M1, 2026-08-29.**
 
 The user reviewed the scene on 2026-08-29 and approved the look ("looks pretty
 good for where we are now"), and chose to accept the current flight values as a
